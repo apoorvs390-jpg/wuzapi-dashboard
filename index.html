@@ -255,7 +255,7 @@ tr:hover td{background:var(--surface2)}
 </div>
 
 <script>
-let recips=[],fData=null,fType=null,fName=null,sending=false,stopFlag=false,arInt=null,sent=0;
+let recips=[],fData=null,fRaw=null,fType=null,fName=null,sending=false,stopFlag=false,arInt=null,sent=0;
 const U=()=>document.getElementById('url').value.trim().replace(/\/$/,'');
 const T=()=>document.getElementById('tok').value.trim();
 
@@ -389,14 +389,14 @@ function hFile(i){if(i.files[0])pFile(i.files[0]);}
 function pFile(file){
   const rd=new FileReader();
   rd.onload=ev=>{
-    fData=ev.target.result.split(',')[1];fName=file.name;
+    fRaw=ev.target.result.split(',')[1];fData=ev.target.result;fName=file.name;
     const m=file.type;fType=m.startsWith('image/')?'image':m.startsWith('video/')?'video':'document';
     document.getElementById('dz').classList.add('hf');document.getElementById('fp').style.display='flex';
     document.getElementById('fic').textContent=fType==='image'?'🖼':fType==='video'?'🎬':'📄';
     document.getElementById('fn').textContent=file.name;document.getElementById('fsz').textContent=(file.size/1024).toFixed(1)+' KB';
   };rd.readAsDataURL(file);
 }
-function rmFile(){fData=null;fType=null;fName=null;document.getElementById('dz').classList.remove('hf');document.getElementById('fp').style.display='none';document.getElementById('fi').value='';}
+function rmFile(){fData=null;fRaw=null;fType=null;fName=null;document.getElementById('dz').classList.remove('hf');document.getElementById('fp').style.display='none';document.getElementById('fi').value='';}
 
 // Broadcast
 function bLog(msg,cls='lin'){
@@ -409,9 +409,9 @@ function bLog(msg,cls='lin'){
 async function sendOne(jid){
   const cap=document.getElementById('mt').value;
   let ep,body;
-  if(fType==='image'){ep='/chat/send/image';body={phone:jid,image:fData,caption:cap};}
-  else if(fType==='video'){ep='/chat/send/video';body={phone:jid,video:fData,caption:cap};}
-  else if(fType==='document'){ep='/chat/send/document';body={phone:jid,document:fData,filename:fName,caption:cap};}
+  if(fType==='image'){ep='/chat/send/image';body={phone:jid,image:fRaw,caption:cap};}
+  else if(fType==='video'){ep='/chat/send/video';body={phone:jid,video:fRaw,caption:cap};}
+  else if(fType==='document'){ep='/chat/send/document';body={phone:jid,document:fRaw,filename:fName,caption:cap};}
   else{ep='/chat/send/text';body={phone:jid,body:cap};}
   const r=await fetch(U()+ep,{method:'POST',headers:{'Token':T(),'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await r.json();return r.ok&&d.success;
