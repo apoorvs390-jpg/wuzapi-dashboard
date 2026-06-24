@@ -409,9 +409,9 @@ function bLog(msg,cls='lin'){
 async function sendOne(jid){
   const cap=document.getElementById('mt').value;
   let ep,body;
-  if(fType==='image'){ep='/chat/send/image';body={phone:jid,image:fRaw,caption:cap};}
-  else if(fType==='video'){ep='/chat/send/video';body={phone:jid,video:fRaw,caption:cap};}
-  else if(fType==='document'){ep='/chat/send/document';body={phone:jid,document:fRaw,filename:fName,caption:cap};}
+  if(fType==='image'){ep='/chat/send/image';body={phone:jid,image:fData,caption:cap};}
+  else if(fType==='video'){ep='/chat/send/video';body={phone:jid,video:fData,caption:cap};}
+  else if(fType==='document'){ep='/chat/send/document';body={phone:jid,document:fData,filename:fName,caption:cap};}
   else{ep='/chat/send/text';body={phone:jid,body:cap};}
   const r=await fetch(U()+ep,{method:'POST',headers:{'Token':T(),'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await r.json();return r.ok&&d.success;
