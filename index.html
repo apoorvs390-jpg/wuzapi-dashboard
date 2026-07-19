@@ -6,7 +6,7 @@
 <title>WuzAPI Dashboard</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3348;--accent:#25d366;--danger:#ef4444;--warn:#f59e0b;--text:#e8eaf0;--muted:#8b92a9;--r:12px}
+:root{--bg:#f7f9fc;--surface:#ffffff;--surface2:#f0f4f8;--border:#d1d9e6;--accent:#25d366;--danger:#ef4444;--warn:#f59e0b;--text:#2d3748;--muted:#718096;--r:12px}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
 .layout{display:flex;min-height:100vh}
 .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;height:100vh}
@@ -246,8 +246,16 @@ tr:hover td{background:var(--surface2)}
 
   <!-- CONTACTS -->
   <div class="sec" id="s-contacts">
-    <div class="pt">Contacts</div><div class="ps">Check if numbers have WhatsApp</div>
+    <div class="pt">Contacts</div><div class="ps">Your WhatsApp contacts</div>
     <div class="card">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn bg" onclick="loadContacts()">🔄 Load Contacts</button>
+        <button class="btn bg" onclick="addAllContacts()" style="background:#0d9488">➕ Add All</button>
+      </div>
+      <input id="ctSearch" placeholder="🔍 Search contacts..." oninput="filterContacts()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);margin-bottom:10px">
+      <div id="ctList" style="max-height:400px;overflow-y:auto"></div>
+    </div>
+    <div class="card" style="margin-top:10px">
       <div class="ct">Check Numbers</div>
       <textarea id="cn" placeholder="919876543210&#10;918765432109&#10;(one per line)" style="height:100px;margin-bottom:10px"></textarea>
       <button class="btn bg" onclick="chkNums()">✅ Check WhatsApp</button>
@@ -367,7 +375,7 @@ function renderR(){
   document.getElementById('rc').textContent=recips.length;
   const b=document.getElementById('rbox');
   if(!recips.length){b.innerHTML='<span style="font-size:12px;color:var(--muted)">No recipients</span>';return;}
-  b.innerHTML=recips.map((r,i)=>`<span class="tag ${r.t==='group'?'tg':'tp'}">${r.t==='group'?'👥':'👤'} ${r.j.replace('@s.whatsapp.net','').replace('@g.us',' [G]').substring(0,18)}<span class="tx" onclick="rmR(${i})">×</span></span>`).join('');
+  b.innerHTML=recips.map((r,i)=>`<span class="tag ${r.t==='group'?'tg':'tp'}">${r.t==='group'?'👥':'👤'} ${(r.n?r.n.substring(0,20):r.j.replace('@s.whatsapp.net','').replace('@g.us',' [G]').substring(0,18))}<span class="tx" onclick="rmR(${i})">×</span></span>`).join('');
 }
 function importSheet(input){
   const file=input.files[0];if(!file)return;
@@ -426,11 +434,11 @@ function impCSV(){
 async function loadGrps(show){
   try{const d=await api('/group/list');
   if(d.data){const raw=d.data;const gs=Array.isArray(raw)?raw:Array.isArray(raw.Groups)?raw.Groups:Array.isArray(raw.groups)?raw.groups:[];
-    if(show){document.getElementById('gt').innerHTML=gs.map(g=>{const jid=g.JID||g.Id||'';const isAdded=recips.find(r=>r.j===jid);const btn=isAdded?'<span style="color:green;font-weight:bold">✅ Added</span>':'<button class="btn bsm bg" onclick="addGrp(\''+jid+'\')">+ Add</button>';return'<tr><td><b>'+(g.Name||g.GroupName||g.Subject||'Unnamed')+'</b></td><td style="font-size:11px;color:var(--muted)">'+jid+'</td><td>'+btn+'</td></tr>';}).join('');}
+    if(show){document.getElementById('gt').innerHTML=gs.map(g=>{const jid=g.JID||g.Id||'';const isAdded=recips.find(r=>r.j===jid);const name=g.Name||g.GroupName||g.Subject||'Group';const btn=isAdded?'<span style="color:green;font-weight:bold">✅ Added</span>':'<button class="btn bsm bg" onclick="addGrp(\''+jid+'\',\''+name.replace(/'/g,\'\')+'\')">+ Add</button>';return'<tr><td><b>'+(g.Name||g.GroupName||g.Subject||'Unnamed')+'</b></td><td style="font-size:11px;color:var(--muted)">'+jid+'</td><td>'+btn+'</td></tr>';}).join('');}
     else{let a=0;gs.forEach(g=>{if(!recips.find(r=>r.j===g.JID||g.Id||'')){recips.push({j:g.JID||g.Id||'',t:'group'});a++;}});renderR();bLog('Added '+a+' groups','lin');}
   }}catch(e){alert(e.message);}
 }
-function addGrp(jid){if(!recips.find(r=>r.j===jid)){recips.push({j:jid,t:'group'});renderR();}loadGrps(true);}
+function addGrp(jid,name){if(!recips.find(r=>r.j===jid)){recips.push({j:jid,t:'group',n:name||jid});renderR();}loadGrps(true);}
 
 // File
 function hDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');if(e.dataTransfer.files[0])pFile(e.dataTransfer.files[0]);}
@@ -491,6 +499,82 @@ async function startBC(){
   sending=false;document.getElementById('sb').style.display='';document.getElementById('stb').style.display='none';
 }
 function stopBC(){stopFlag=true;}
+
+
+let allContacts = [];
+
+async function loadContacts(){
+  try{
+    document.getElementById('ctList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Loading contacts...</div>';
+    const d = await api('/user/contacts');
+    if(d.data){
+      // contacts is an object {jid: {Name, ...}}
+      allContacts = [];
+      const contacts = d.data;
+      if(typeof contacts === 'object' && !Array.isArray(contacts)){
+        Object.entries(contacts).forEach(([jid, info]) => {
+          if(jid && jid.includes('@s.whatsapp.net')){
+            allContacts.push({
+              jid: jid,
+              name: (info && (info.FullName || info.PushName || info.FirstName)) || jid.replace('@s.whatsapp.net','')
+            });
+          }
+        });
+      }
+      allContacts.sort((a,b) => a.name.localeCompare(b.name));
+      renderContacts(allContacts);
+      bLog('Loaded '+allContacts.length+' contacts','lin');
+    }
+  }catch(e){
+    document.getElementById('ctList').innerHTML = '<div style="color:var(--danger);padding:10px">Error: '+e.message+'</div>';
+  }
+}
+
+function renderContacts(list){
+  if(!list.length){
+    document.getElementById('ctList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No contacts found</div>';
+    return;
+  }
+  document.getElementById('ctList').innerHTML = list.map(c => {
+    const isAdded = recips.find(r => r.j === c.jid);
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid var(--border)">'
+      + '<div><div style="font-weight:500">'+c.name+'</div><div style="font-size:11px;color:var(--muted)">'+c.jid.replace('@s.whatsapp.net','')+'</div></div>'
+      + (isAdded
+        ? '<span style="color:green;font-weight:bold;font-size:13px">✅ Added</span>'
+        : '<button class="btn bsm bg" onclick="addContact(\''+c.jid+'\',\''+c.name.replace(/'/g,\'\\\'\')+'\')" style="font-size:12px">+ Add</button>')
+      + '</div>';
+  }).join('');
+}
+
+function filterContacts(){
+  const q = document.getElementById('ctSearch').value.toLowerCase();
+  const filtered = allContacts.filter(c => c.name.toLowerCase().includes(q) || c.jid.includes(q));
+  renderContacts(filtered);
+}
+
+function addContact(jid, name){
+  if(!recips.find(r => r.j === jid)){
+    recips.push({j:jid, t:'personal', n:name||jid.replace('@s.whatsapp.net','')});
+    renderR();
+  }
+  // Refresh contacts list to show Added
+  const q = document.getElementById('ctSearch').value.toLowerCase();
+  const filtered = q ? allContacts.filter(c => c.name.toLowerCase().includes(q) || c.jid.includes(q)) : allContacts;
+  renderContacts(filtered);
+}
+
+function addAllContacts(){
+  let added = 0;
+  allContacts.forEach(c => {
+    if(!recips.find(r => r.j === c.jid)){
+      recips.push({j:c.jid, t:'personal', n:c.name});
+      added++;
+    }
+  });
+  renderR();
+  renderContacts(allContacts);
+  bLog('Added '+added+' contacts','lin');
+}
 
 async function chkNums(){
   const nums=document.getElementById('cn').value.trim().split('\n').filter(Boolean);if(!nums.length)return alert('Enter numbers');
