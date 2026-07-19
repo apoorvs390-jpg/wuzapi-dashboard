@@ -426,11 +426,11 @@ function impCSV(){
 async function loadGrps(show){
   try{const d=await api('/group/list');
   if(d.data){const raw=d.data;const gs=Array.isArray(raw)?raw:Array.isArray(raw.Groups)?raw.Groups:Array.isArray(raw.groups)?raw.groups:[];
-    if(show){document.getElementById('gt').innerHTML=gs.map(g=>`<tr><td><b>${g.Name||g.GroupName||g.Subject||'Unnamed'}</b></td><td style="font-size:11px;color:var(--muted)">${g.JID||g.Id||''}</td><td><button class="btn bsm bg" onclick="addGrp('${g.JID||g.Id||''}')">+ Add</button></td></tr>`).join('');}
+    if(show){document.getElementById('gt').innerHTML=gs.map(g=>{const jid=g.JID||g.Id||'';const isAdded=recips.find(r=>r.j===jid);return`<tr><td><b>${g.Name||g.GroupName||g.Subject||'Unnamed'}</b></td><td style="font-size:11px;color:var(--muted)">${jid}</td><td>${isAdded?'<span style="color:green;font-weight:bold">✅ Added</span>':\`<button class="btn bsm bg" onclick="addGrp('${jid}')">+ Add</button>\`}</td></tr>`;}).join('');}
     else{let a=0;gs.forEach(g=>{if(!recips.find(r=>r.j===g.JID||g.Id||'')){recips.push({j:g.JID||g.Id||'',t:'group'});a++;}});renderR();bLog('Added '+a+' groups','lin');}
   }}catch(e){alert(e.message);}
 }
-function addGrp(jid){if(!recips.find(r=>r.j===jid)){recips.push({j:jid,t:'group'});renderR();}go('broadcast');}
+function addGrp(jid){if(!recips.find(r=>r.j===jid)){recips.push({j:jid,t:'group'});renderR();}loadGrps(true);}
 
 // File
 function hDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');if(e.dataTransfer.files[0])pFile(e.dataTransfer.files[0]);}
