@@ -76,6 +76,7 @@ tr:hover td{background:var(--surface2)}
 .mt1{margin-top:1rem}.mb1{margin-bottom:1rem}.w100{width:100%}
 .sf{display:none}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="layout">
@@ -167,6 +168,8 @@ tr:hover td{background:var(--surface2)}
           <div style="display:flex;gap:4px;margin-bottom:10px">
             <button class="btn bsm bg" onclick="setRT('m')">Manual</button>
             <button class="btn bsm bo" onclick="setRT('c')">CSV</button>
+            <button class="btn bsm bo" onclick="document.getElementById('xlsxFile').click()">📊 Excel/CSV</button>
+            <input type="file" id="xlsxFile" style="display:none" accept=".csv,.xlsx,.xls" onchange="importSheet(this)">
             <button class="btn bsm bo" onclick="loadGrps()">📥 My Groups</button>
           </div>
           <div id="rt-m">
@@ -365,6 +368,52 @@ function renderR(){
   const b=document.getElementById('rbox');
   if(!recips.length){b.innerHTML='<span style="font-size:12px;color:var(--muted)">No recipients</span>';return;}
   b.innerHTML=recips.map((r,i)=>`<span class="tag ${r.t==='group'?'tg':'tp'}">${r.t==='group'?'👥':'👤'} ${r.j.replace('@s.whatsapp.net','').replace('@g.us',' [G]').substring(0,18)}<span class="tx" onclick="rmR(${i})">×</span></span>`).join('');
+}
+function importSheet(input){
+  const file=input.files[0];if(!file)return;
+  const isCSV=file.name.endsWith('.csv');
+  const reader=new FileReader();
+  reader.onload=function(e){
+    let added=0;
+    if(isCSV){
+      const text=e.target.result;
+      const lines=text.trim().split('\n');
+      lines.forEach((line,idx)=>{
+        const cols=line.split(',').map(s=>s.trim().replace(/"/g,''));
+        // Try to find a number in any column
+        let num=null;
+        cols.forEach(col=>{
+          const clean=col.replace(/\D/g,'');
+          if(clean.length>=10&&clean.length<=15)num=clean;
+        });
+        if(!num)return;
+        // Skip header row if first row has no numbers
+        if(idx===0&&isNaN(num))return;
+        const j=num+'@s.whatsapp.net';
+        if(!recips.find(r=>r.j===j)){recips.push({j,t:'personal'});added++;}
+      });
+    } else {
+      // Excel - use SheetJS
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      rows.forEach((row,idx)=>{
+        row.forEach(cell=>{
+          const clean=String(cell).replace(/\D/g,'');
+          if(clean.length>=10&&clean.length<=15){
+            const j=clean+'@s.whatsapp.net';
+            if(!recips.find(r=>r.j===j)){recips.push({j,t:'personal'});added++;}
+          }
+        });
+      });
+    }
+    renderR();
+    bLog('📊 Imported '+added+' numbers from file','lin');
+    input.value='';
+  };
+  if(isCSV)reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
 }
 function impCSV(){
   const lines=document.getElementById('csv').value.trim().split('\n');let added=0;
