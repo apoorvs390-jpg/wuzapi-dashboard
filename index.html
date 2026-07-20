@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WuzAPI Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1e2130;
+  --surface:#252836;
+  --surface2:#2d3147;
+  --border:#3a3f5c;
+  --accent:#25d366;
+  --danger:#ef4444;
+  --warn:#f59e0b;
+  --text:#e2e8f0;
+  --muted:#9aa5b4;
+  --r:12px
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;height:100vh}
+.main{margin-left:220px;flex:1;padding:1.5rem}
+.logo{padding:1.25rem;border-bottom:1px solid var(--border)}
+.logo-t{font-size:18px;font-weight:700;color:var(--accent)}
+.logo-s{font-size:11px;color:var(--muted);margin-top:2px}
+.nav{flex:1;padding:.75rem 0}
+.ni{display:flex;align-items:center;gap:10px;padding:10px 1.25rem;font-size:14px;color:var(--muted);cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.ni:hover{color:var(--text);background:var(--surface2)}
+.ni.active{color:var(--accent);background:rgba(37,211,102,.08);border-left-color:var(--accent)}
+.config{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.config label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+.config input{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;width:200px}
+.btn{padding:8px 14px;border-radius:8px;border:none;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.btn:active{transform:scale(.97)}
+.bg{background:var(--accent);color:#000}.bg:hover{opacity:.85}
+.bo{background:transparent;border:1px solid var(--border);color:var(--text)}.bo:hover{background:var(--surface2)}
+.br{background:var(--danger);color:#fff}.br:hover{opacity:.85}
+.bsm{padding:5px 10px;font-size:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1rem}
+.ct{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.75rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem}
+.sn{font-size:26px;font-weight:700;color:var(--accent)}
+.sl{font-size:12px;color:var(--muted);margin-top:3px}
+.sec{display:none}.sec.active{display:block}
+.pt{font-size:20px;font-weight:700;margin-bottom:.2rem}
+.ps{font-size:13px;color:var(--muted);margin-bottom:1.25rem}
+.cs{display:inline-flex;align-items:center;gap:5px;font-size:13px;padding:4px 10px;border-radius:20px}
+.cs-ok{background:rgba(37,211,102,.15);color:var(--accent)}
+.cs-err{background:rgba(239,68,68,.15);color:var(--danger)}
+.cs-idle{background:var(--surface2);color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.rw{display:flex;gap:8px;align-items:flex-end}
+.rw>*{flex:1}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.label{font-size:13px;color:var(--muted);margin-bottom:4px;display:block}
+.hint{font-size:11px;color:var(--muted);margin-top:3px}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-family:inherit;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+.rbox{border:1px solid var(--border);border-radius:8px;padding:8px;min-height:44px;display:flex;flex-wrap:wrap;gap:4px;background:var(--bg)}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:12px}
+.tp{background:rgba(37,211,102,.15);color:var(--accent);border:1px solid rgba(37,211,102,.3)}
+.tg{background:rgba(245,158,11,.15);color:var(--warn);border:1px solid rgba(245,158,11,.3)}
+.tx{cursor:pointer;opacity:.7;font-size:14px}.tx:hover{opacity:1}
+.uz{border:2px dashed var(--border);border-radius:var(--r);padding:1.5rem;text-align:center;cursor:pointer;transition:all .15s}
+.uz:hover{border-color:var(--accent);background:rgba(37,211,102,.05)}
+.uz.hf{border-color:var(--accent);background:rgba(37,211,102,.08)}
+.fi{display:flex;align-items:center;gap:8px;padding:8px;background:var(--surface2);border-radius:8px;margin-top:8px;font-size:13px}
+.prog{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:8px 0}
+.pf{height:100%;background:linear-gradient(90deg,#128c7e,#25d366);border-radius:3px;transition:width .3s}
+.log{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;max-height:180px;overflow-y:auto;font-family:monospace;font-size:12px}
+.lok{color:var(--accent)}.ler{color:var(--danger)}.lin{color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:1rem;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--warn)}
+.mt1{margin-top:1rem}.mb1{margin-bottom:1rem}.w100{width:100%}
+.added-badge{color:#25d366;font-weight:700;font-size:12px}
+.contact-row{display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="layout">
+<div class="sidebar">
+  <div class="logo"><div class="logo-t">WuzAPI</div><div class="logo-s">WhatsApp Dashboard</div></div>
+  <nav class="nav">
+    <div class="ni active" onclick="go('dashboard')">Dashboard</div>
+    <div class="ni" onclick="go('connect')">Connect</div>
+    <div class="ni" onclick="go('broadcast')">Broadcast</div>
+    <div class="ni" onclick="go('groups')">Groups</div>
+    <div class="ni" onclick="go('contacts')">Contacts</div>
+  </nav>
+  <div style="padding:1rem;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">v3.0 · WuzAPI</div>
+</div>
+
+<div class="main">
+  <div class="config">
+    <div><label>Server URL</label><input id="url" value="https://wuzapi-production-2365.up.railway.app"></div>
+    <div><label>Token</label><input id="tok" type="password" value="mytoken123"></div>
+    <div style="flex:0"><button class="btn bg" onclick="testConn()">Connect</button></div>
+    <span id="cb" class="cs cs-idle"><span class="dot"></span>Not tested</span>
+  </div>
+
+  <div class="sec active" id="s-dashboard">
+    <div class="pt">Dashboard</div><div class="ps">Server overview</div>
+    <div class="stats">
+      <div class="stat"><div class="sn" id="st-u">-</div><div class="sl">Total Users</div></div>
+      <div class="stat"><div class="sn" id="st-c">-</div><div class="sl">Connected</div></div>
+      <div class="stat"><div class="sn" id="st-l">-</div><div class="sl">Logged In</div></div>
+      <div class="stat"><div class="sn" id="st-s">0</div><div class="sl">Sent Today</div></div>
+    </div>
+  </div>
+
+  <div class="sec" id="s-connect">
+    <div class="pt">Connect WhatsApp</div><div class="ps">QR scan ya phone number se pair karo</div>
+    <div class="g2">
+      <div class="card">
+        <div class="ct">QR Code</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div id="qrc" style="width:240px;height:240px;background:var(--surface2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px">Click Get QR</div>
+          <button class="btn bg" onclick="getQR()">Get QR Code</button>
+          <div id="qs" style="font-size:12px;color:var(--muted)">QR expires in 60 seconds</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">Session Info</div>
+        <div id="si" style="font-size:13px;color:var(--muted);margin-bottom:1rem">Not connected</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn bo w100" onclick="connSess()">Connect Session</button>
+          <button class="btn bo w100" onclick="getStat()">Check Status</button>
+          <button class="btn br w100" onclick="discSess()">Disconnect</button>
+        </div>
+      </div>
+    </div>
+    <div class="card mt1">
+      <div class="ct">Pair via Phone Number</div>
+      <div class="rw">
+        <input id="pp" placeholder="919876543210">
+        <div style="flex:0"><button class="btn bg" onclick="pairP()">Send Code</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" id="s-broadcast">
+    <div class="pt">Bulk Broadcast</div><div class="ps">Messages + attachments bhejo</div>
+    <div class="alert">Add delay zaroor rakho — WhatsApp ban se bachne ke liye!</div>
+    <div class="g2">
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div class="card">
+          <div class="ct">Recipients</div>
+          <div style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="btn bsm bg" onclick="setRT('m')">Manual</button>
+            <button class="btn bsm bo" onclick="setRT('c')">CSV</button>
+            <button class="btn bsm bo" onclick="setRT('x')">Excel/CSV File</button>
+            <button class="btn bsm bo" onclick="go('groups')">My Groups</button>
+          </div>
+          <div id="rt-m">
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input id="ri" placeholder="919876543210" onkeydown="if(event.key==='Enter')addR()" style="flex:1;width:auto">
+              <select id="rtype" style="flex:0;width:110px">
+                <option value="personal">Personal</option>
+                <option value="group">Group</option>
+              </select>
+              <button class="btn bg bsm" onclick="addR()">+</button>
+              <button class="btn bo bsm" onclick="pasteNums()" title="Clipboard se paste karo">Paste</button>
+            </div>
+          </div>
+          <div id="rt-c" style="display:none">
+            <label class="label">CSV: type,number per line</label>
+            <textarea id="csv" placeholder="personal,919876543210&#10;group,120363xxx@g.us" style="height:70px"></textarea>
+            <button class="btn bg bsm mt1" onclick="impCSV()">Import</button>
+          </div>
+          <div id="rt-x" style="display:none">
+            <label class="label">Excel ya CSV file upload karo</label>
+            <input type="file" id="sheetFile" accept=".csv,.xlsx,.xls" onchange="importSheet(this)" style="margin-bottom:6px">
+            <div style="font-size:11px;color:var(--muted)">Header row auto skip hogi. Kisi bhi column mein number detect hoga!</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px">
+            <span class="label" style="margin:0">Added: <b id="rc">0</b></span>
+            <button class="btn bsm bo" onclick="clrR()" style="color:var(--danger)">Clear</button>
+          </div>
+          <div class="rbox" id="rbox"><span style="font-size:12px;color:var(--muted)">No recipients</span></div>
+        </div>
+        <div class="card">
+          <div class="ct">Settings</div>
+          <div class="g2">
+            <div><label class="label">Min Delay (sec)</label><input type="number" id="dlymin" value="5" min="1" max="60"></div>
+            <div><label class="label">Max Delay (sec)</label><input type="number" id="dlymax" value="12" min="1" max="60"></div>
+          </div>
+          <div><label class="label">Send to</label><select id="sm"><option value="all">All</option><option value="personal">Personal only</option><option value="group">Groups only</option></select></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div class="card">
+          <div class="ct">Message</div>
+          <label class="label">Caption / Text</label>
+          <textarea id="mt" placeholder="Type your message..." style="margin-bottom:10px"></textarea>
+          <label class="label">Attachment (optional)</label>
+          <div class="uz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault()" ondrop="hDrop(event)">
+            <div style="font-size:28px">+</div>
+            <div style="font-size:13px;color:var(--muted)">Click or drag and drop</div>
+            <div style="font-size:11px;color:var(--muted)">Images, Videos, Documents</div>
+          </div>
+          <input type="file" id="fi" style="display:none" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onchange="hFile(this)">
+          <div id="fp" style="display:none" class="fi">
+            <span id="fic" style="font-size:20px"></span>
+            <div style="flex:1"><div id="fn" style="font-weight:500"></div><div id="fsz" style="font-size:11px;color:var(--muted)"></div></div>
+            <button class="btn bsm bo" onclick="rmFile()" style="color:var(--danger)">X</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct">Launch</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button class="btn bg" id="sb" onclick="startBC()">Start Broadcast</button>
+            <button class="btn br" id="stb" style="display:none" onclick="stopBC()">Stop</button>
+          </div>
+          <div class="prog" id="pb" style="display:none"><div class="pf" id="pf" style="width:0%"></div></div>
+          <div id="bsr" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 0">
+            <div class="stat" style="padding:.75rem"><div class="sn" id="bt" style="font-size:20px">0</div><div class="sl">Total</div></div>
+            <div class="stat" style="padding:.75rem"><div class="sn" id="bok" style="font-size:20px;color:var(--accent)">0</div><div class="sl">Sent</div></div>
+            <div class="stat" style="padding:.75rem"><div class="sn" id="ber" style="font-size:20px;color:var(--danger)">0</div><div class="sl">Failed</div></div>
+          </div>
+          <div class="log" id="bl" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" id="s-groups">
+    <div class="pt">Groups</div><div class="ps">WhatsApp groups manage karo</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn bg" onclick="loadGrps()">Refresh Groups</button>
+      <button class="btn bo" onclick="addAllGrps()">Add All to Broadcast</button>
+    </div>
+    <div class="card">
+      <table><thead><tr><th>Name</th><th>JID</th><th>Action</th></tr></thead>
+      <tbody id="gt"><tr><td colspan="3" style="color:var(--muted);text-align:center;padding:1.5rem">Refresh Groups dabao</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="sec" id="s-contacts">
+    <div class="pt">Contacts</div><div class="ps">WhatsApp contacts</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn bg" onclick="loadContacts()">Load Contacts</button>
+      <button class="btn bo" onclick="addAllContacts()">Add All to Broadcast</button>
+    </div>
+    <input type="text" id="ctSearch" placeholder="Search contacts..." oninput="filterContacts()" style="margin-bottom:10px">
+    <div class="card">
+      <div id="ctList" style="max-height:400px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+var recips = [];
+var allGroups = [];
+var allContacts = [];
+var fData = null;
+var fType = null;
+var fName = null;
+var sending = false;
+var stopFlag = false;
+var sentToday = 0;
+
+function U(){ return document.getElementById('url').value.trim().replace(/\/$/, ''); }
+function T(){ return document.getElementById('tok').value.trim(); }
+
+function go(n){
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('s-'+n).classList.add('active');
+  document.querySelectorAll('.ni').forEach(function(i){ i.classList.remove('active'); });
+  document.querySelectorAll('.ni').forEach(function(i){
+    if(i.getAttribute('onclick') && i.getAttribute('onclick').indexOf(n) > -1) i.classList.add('active');
+  });
+}
+
+async function api(path, opts){
+  opts = opts || {};
+  var r = await fetch(U()+path, {
+    method: opts.method || 'GET',
+    headers: {'Token': T(), 'Content-Type': 'application/json'},
+    body: opts.body || undefined
+  });
+  return r.json();
+}
+
+async function testConn(){
+  var cb = document.getElementById('cb');
+  cb.className = 'cs cs-idle';
+  cb.innerHTML = '<span class="dot"></span>Testing...';
+  try{
+    var d = await api('/session/status');
+    if(d.code === 200 || d.success){
+      cb.className = 'cs cs-ok';
+      cb.innerHTML = '<span class="dot"></span>Connected';
+      loadHealth();
+    } else {
+      cb.className = 'cs cs-err';
+      cb.innerHTML = '<span class="dot"></span>Auth Error';
+    }
+  } catch(e){
+    cb.className = 'cs cs-err';
+    cb.innerHTML = '<span class="dot"></span>Unreachable';
+  }
+}
+
+async function loadHealth(){
+  try{
+    var d = await fetch(U()+'/health').then(function(r){ return r.json(); });
+    document.getElementById('st-u').textContent = d.total_users || 0;
+    document.getElementById('st-c').textContent = d.connected_users || 0;
+    document.getElementById('st-l').textContent = d.logged_in_users || 0;
+  } catch(e){}
+}
+
+async function connSess(){
+  try{
+    var d = await api('/session/connect', {method:'POST', body: JSON.stringify({subscribe:['Message'],immediate:true})});
+    document.getElementById('si').textContent = d.success ? 'Connected!' : (d.error || 'Error');
+  } catch(e){ alert(e.message); }
+}
+
+async function getStat(){
+  try{
+    var d = await api('/session/status');
+    var x = d.data || {};
+    document.getElementById('si').innerHTML =
+      'Phone: ' + (x.jid || 'Not linked') + '<br>' +
+      'Connected: ' + (x.connected ? 'Yes' : 'No') + '<br>' +
+      'Logged In: ' + (x.loggedIn ? 'Yes' : 'No');
+  } catch(e){ alert(e.message); }
+}
+
+async function discSess(){
+  if(!confirm('Disconnect?')) return;
+  try{ await api('/session/disconnect', {method:'POST'}); document.getElementById('si').textContent = 'Disconnected'; } catch(e){}
+}
+
+async function pairP(){
+  var p = document.getElementById('pp').value.trim();
+  if(!p) return alert('Enter number');
+  try{
+    var d = await api('/session/pairphone', {method:'POST', body: JSON.stringify({phone:p})});
+    alert('Code: ' + JSON.stringify(d.data));
+  } catch(e){ alert(e.message); }
+}
+
+async function getQR(){
+  document.getElementById('qs').textContent = 'Loading QR...';
+  try{
+    await api('/session/connect', {method:'POST', body: JSON.stringify({subscribe:['Message'],immediate:true})});
+  } catch(e){}
+  try{
+    var d = await api('/session/qr');
+    if(d.data && d.data.QRCode){
+      document.getElementById('qrc').innerHTML = '<img src="' + d.data.QRCode + '" style="width:240px;height:240px;border-radius:8px">';
+      document.getElementById('qs').textContent = 'Scan now!';
+    } else {
+      document.getElementById('qs').textContent = 'Already connected or error: ' + (d.error || '');
+    }
+  } catch(e){ document.getElementById('qs').textContent = 'Error: ' + e.message; }
+}
+
+function setRT(t){
+  document.getElementById('rt-m').style.display = t === 'm' ? '' : 'none';
+  document.getElementById('rt-c').style.display = t === 'c' ? '' : 'none';
+  document.getElementById('rt-x').style.display = t === 'x' ? '' : 'none';
+}
+
+function addR(){
+  var v = document.getElementById('ri').value.trim();
+  var tp = document.getElementById('rtype').value;
+  if(!v) return;
+  var j = v;
+  if(tp === 'personal' && j.indexOf('@') === -1) j += '@s.whatsapp.net';
+  if(tp === 'group' && j.indexOf('@') === -1) j += '@g.us';
+  if(recips.find(function(r){ return r.j === j; })) return;
+  recips.push({j:j, t:tp, n:v});
+  document.getElementById('ri').value = '';
+  renderR();
+}
+
+async function pasteNums(){
+  try{
+    var text = await navigator.clipboard.readText();
+    var nums = text.match(/\d{10,15}/g);
+    if(!nums || !nums.length){ alert('Clipboard mein koi number nahi mila!'); return; }
+    var added = 0;
+    nums.forEach(function(num){
+      var jid = num + '@s.whatsapp.net';
+      if(!recips.find(function(r){ return r.j === jid; })){
+        recips.push({j:jid, t:'personal', n:num});
+        added++;
+      }
+    });
+    renderR();
+    bLog('Clipboard se ' + added + ' numbers add hue!', 'lin');
+  } catch(e){
+    alert('Clipboard access nahi mila!');
+  }
+}
+
+function impCSV(){
+  var lines = document.getElementById('csv').value.trim().split('\n');
+  var added = 0;
+  lines.forEach(function(l){
+    var parts = l.split(',').map(function(s){ return s.trim(); });
+    var tp = parts[0];
+    var n = parts[1];
+    if(!n) return;
+    var j = n;
+    if(tp === 'personal' && j.indexOf('@') === -1) j += '@s.whatsapp.net';
+    if(tp === 'group' && j.indexOf('@') === -1) j += '@g.us';
+    if(!recips.find(function(r){ return r.j === j; })){ recips.push({j:j, t:tp, n:n}); added++; }
+  });
+  renderR();
+  bLog('Imported ' + added + ' recipients', 'lin');
+}
+
+function importSheet(input){
+  var file = input.files[0];
+  if(!file) return;
+  var isCSV = file.name.endsWith('.csv');
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var added = 0;
+    if(isCSV){
+      var lines = e.target.result.trim().split('\n');
+      lines.forEach(function(line){
+        line.split(',').forEach(function(col){
+          var num = col.trim().replace(/\D/g, '');
+          if(num.length >= 10 && num.length <= 15){
+            var jid = num + '@s.whatsapp.net';
+            if(!recips.find(function(r){ return r.j === jid; })){
+              recips.push({j:jid, t:'personal', n:num});
+              added++;
+            }
+          }
+        });
+      });
+    } else {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, {type:'array'});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1});
+      rows.forEach(function(row){
+        row.forEach(function(cell){
+          var num = String(cell).replace(/\D/g, '');
+          if(num.length >= 10 && num.length <= 15){
+            var jid = num + '@s.whatsapp.net';
+            if(!recips.find(function(r){ return r.j === jid; })){
+              recips.push({j:jid, t:'personal', n:num});
+              added++;
+            }
+          }
+        });
+      });
+    }
+    renderR();
+    alert('Imported ' + added + ' numbers!');
+    input.value = '';
+  };
+  if(isCSV) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+function rmR(i){ recips.splice(i, 1); renderR(); }
+function clrR(){ recips = []; renderR(); }
+
+function renderR(){
+  document.getElementById('rc').textContent = recips.length;
+  var b = document.getElementById('rbox');
+  if(!recips.length){
+    b.innerHTML = '<span style="font-size:12px;color:var(--muted)">No recipients</span>';
+    return;
+  }
+  b.innerHTML = recips.map(function(r, i){
+    var display = (r.n || r.j.replace('@s.whatsapp.net','').replace('@g.us','')).substring(0, 20);
+    var cls = r.t === 'group' ? 'tg' : 'tp';
+    var icon = r.t === 'group' ? 'G' : 'P';
+    return '<span class="tag ' + cls + '">' + icon + ' ' + display + '<span class="tx" onclick="rmR(' + i + ')">x</span></span>';
+  }).join('');
+}
+
+function hDrop(e){
+  e.preventDefault();
+  if(e.dataTransfer.files[0]) pFile(e.dataTransfer.files[0]);
+}
+
+function hFile(i){
+  if(i.files[0]) pFile(i.files[0]);
+}
+
+function pFile(file){
+  var rd = new FileReader();
+  rd.onload = function(ev){
+    fData = ev.target.result;
+    var m = file.type;
+    fType = m.startsWith('image/') ? 'image' : m.startsWith('video/') ? 'video' : 'document';
+    fName = file.name;
+    document.getElementById('dz').classList.add('hf');
+    document.getElementById('fp').style.display = 'flex';
+    document.getElementById('fic').textContent = fType === 'image' ? 'IMG' : fType === 'video' ? 'VID' : 'DOC';
+    document.getElementById('fn').textContent = file.name;
+    document.getElementById('fsz').textContent = (file.size/1024).toFixed(1) + ' KB';
+  };
+  rd.readAsDataURL(file);
+}
+
+function rmFile(){
+  fData = null; fType = null; fName = null;
+  document.getElementById('dz').classList.remove('hf');
+  document.getElementById('fp').style.display = 'none';
+  document.getElementById('fi').value = '';
+}
+
+function bLog(msg, cls){
+  cls = cls || 'lin';
+  var l = document.getElementById('bl');
+  l.style.display = 'block';
+  document.getElementById('pb').style.display = 'block';
+  document.getElementById('bsr').style.display = 'grid';
+  var d = document.createElement('div');
+  d.className = cls;
+  d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  l.appendChild(d);
+  l.scrollTop = l.scrollHeight;
+}
+
+async function sendOne(jid){
+  var cap = document.getElementById('mt').value;
+  var ep, body;
+  if(fType === 'image'){ ep = '/chat/send/image'; body = {phone:jid, image:fData, caption:cap}; }
+  else if(fType === 'video'){ ep = '/chat/send/video'; body = {phone:jid, video:fData, caption:cap}; }
+  else if(fType === 'document'){ ep = '/chat/send/document'; body = {phone:jid, document:fData, filename:fName, caption:cap}; }
+  else { ep = '/chat/send/text'; body = {phone:jid, body:cap}; }
+  var r = await fetch(U()+ep, {method:'POST', headers:{'Token':T(),'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  var d = await r.json();
+  return r.ok && d.success;
+}
+
+async function startBC(){
+  var cap = document.getElementById('mt').value;
+  var mode = document.getElementById('sm').value;
+  var dlyMin = parseInt(document.getElementById('dlymin').value) || 5;
+  var dlyMax = parseInt(document.getElementById('dlymax').value) || 12;
+  if(!T()) return alert('Token daalo pehle!');
+  if(!cap && !fData) return alert('Message ya file add karo!');
+  var tgts = recips.filter(function(r){
+    return mode === 'all' || (mode === 'personal' && r.t === 'personal') || (mode === 'group' && r.t === 'group');
+  });
+  if(!tgts.length) return alert('Recipients add karo!');
+  stopFlag = false; sending = true;
+  document.getElementById('sb').style.display = 'none';
+  document.getElementById('stb').style.display = '';
+  document.getElementById('bl').innerHTML = '';
+  var ok = 0, err = 0;
+  document.getElementById('bt').textContent = tgts.length;
+  bLog('Starting broadcast to ' + tgts.length + ' recipients...', 'lin');
+  for(var i = 0; i < tgts.length; i++){
+    if(stopFlag){ bLog('Stopped by user.', 'lin'); break; }
+    try{
+      var s = await sendOne(tgts[i].j);
+      if(s){ ok++; sentToday++; bLog('Sent: ' + (tgts[i].n || tgts[i].j), 'lok'); }
+      else { err++; bLog('Failed: ' + (tgts[i].n || tgts[i].j), 'ler'); }
+    } catch(e){
+      err++;
+      bLog('Error: ' + e.message, 'ler');
+    }
+    document.getElementById('bok').textContent = ok;
+    document.getElementById('ber').textContent = err;
+    document.getElementById('st-s').textContent = sentToday;
+    document.getElementById('pf').style.width = Math.round(((i+1)/tgts.length)*100) + '%';
+    if(i < tgts.length-1 && !stopFlag){
+      var delay = Math.floor(Math.random()*(dlyMax-dlyMin+1))+dlyMin;
+      bLog('Waiting ' + delay + 's...', 'lin');
+      await new Promise(function(res){ setTimeout(res, delay*1000); });
+    }
+  }
+  bLog('Done! Sent: ' + ok + ' | Failed: ' + err, 'lin');
+  sending = false;
+  document.getElementById('sb').style.display = '';
+  document.getElementById('stb').style.display = 'none';
+}
+
+function stopBC(){ stopFlag = true; }
+
+async function loadGrps(){
+  try{
+    document.getElementById('gt').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">Loading...</td></tr>';
+    var d = await api('/group/list');
+    if(d.data){
+      var raw = d.data;
+      allGroups = Array.isArray(raw) ? raw : Array.isArray(raw.Groups) ? raw.Groups : Array.isArray(raw.groups) ? raw.groups : [];
+      renderGrps();
+    }
+  } catch(e){ alert(e.message); }
+}
+
+function renderGrps(){
+  if(!allGroups.length){
+    document.getElementById('gt').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">No groups found</td></tr>';
+    return;
+  }
+  var html = '';
+  allGroups.forEach(function(g){
+    var jid = g.JID || g.Id || '';
+    var gname = g.Name || g.GroupName || g.Subject || 'Unnamed';
+    var isAdded = recips.find(function(r){ return r.j === jid; });
+    var safeJid = jid.replace(/"/g, '');
+    var safeName = gname.replace(/"/g, '').replace(/'/g, '');
+    var btn = isAdded
+      ? '<span class="added-badge">Added</span>'
+      : '<button class="btn bsm bg" onclick="addGrp(\'' + safeJid + '\',\'' + safeName + '\')">+ Add</button>';
+    html += '<tr><td><b>' + gname + '</b></td><td style="font-size:11px;color:var(--muted)">' + jid + '</td><td>' + btn + '</td></tr>';
+  });
+  document.getElementById('gt').innerHTML = html;
+}
+
+function addGrp(jid, name){
+  if(!recips.find(function(r){ return r.j === jid; })){
+    recips.push({j:jid, t:'group', n:name || jid});
+    renderR();
+  }
+  renderGrps();
+}
+
+function addAllGrps(){
+  var added = 0;
+  allGroups.forEach(function(g){
+    var jid = g.JID || g.Id || '';
+    var name = g.Name || g.GroupName || g.Subject || 'Unnamed';
+    if(!recips.find(function(r){ return r.j === jid; })){
+      recips.push({j:jid, t:'group', n:name});
+      added++;
+    }
+  });
+  renderR();
+  renderGrps();
+  alert('Added ' + added + ' groups!');
+}
+
+async function loadContacts(){
+  try{
+    document.getElementById('ctList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Loading...</div>';
+    var d = await api('/user/contacts');
+    if(d.data){
+      allContacts = [];
+      var contacts = d.data;
+      if(typeof contacts === 'object' && !Array.isArray(contacts)){
+        Object.keys(contacts).forEach(function(jid){
+          var info = contacts[jid];
+          if(jid && jid.indexOf('@s.whatsapp.net') > -1){
+            var name = (info && (info.FullName || info.PushName || info.FirstName)) || jid.replace('@s.whatsapp.net', '');
+            allContacts.push({jid:jid, name:name});
+          }
+        });
+      }
+      allContacts.sort(function(a,b){ return a.name.localeCompare(b.name); });
+      renderContacts(allContacts);
+    }
+  } catch(e){
+    document.getElementById('ctList').innerHTML = '<div style="color:var(--danger);padding:10px">Error: ' + e.message + '</div>';
+  }
+}
+
+function renderContacts(list){
+  if(!list || !list.length){
+    document.getElementById('ctList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No contacts. Load karo.</div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(c){
+    var isAdded = recips.find(function(r){ return r.j === c.jid; });
+    var num = c.jid.replace('@s.whatsapp.net', '');
+    var safeName = c.name.replace(/'/g, '').replace(/"/g, '');
+    html += '<div class="contact-row">'
+      + '<div><div style="font-weight:500">' + c.name + '</div><div style="font-size:11px;color:var(--muted)">' + num + '</div></div>'
+      + (isAdded
+        ? '<span class="added-badge">Added</span>'
+        : '<button class="btn bsm bg" onclick="addContact(\'' + num + '\',\'' + safeName + '\')">+ Add</button>')
+      + '</div>';
+  });
+  document.getElementById('ctList').innerHTML = html;
+}
+
+function filterContacts(){
+  var q = document.getElementById('ctSearch').value.toLowerCase();
+  var filtered = allContacts.filter(function(c){
+    return c.name.toLowerCase().indexOf(q) > -1 || c.jid.indexOf(q) > -1;
+  });
+  renderContacts(filtered);
+}
+
+function addContact(num, name){
+  var jid = num + '@s.whatsapp.net';
+  if(!recips.find(function(r){ return r.j === jid; })){
+    recips.push({j:jid, t:'personal', n:name || num});
+    renderR();
+  }
+  var q = document.getElementById('ctSearch').value.toLowerCase();
+  var filtered = q ? allContacts.filter(function(c){ return c.name.toLowerCase().indexOf(q) > -1; }) : allContacts;
+  renderContacts(filtered);
+}
+
+function addAllContacts(){
+  var added = 0;
+  allContacts.forEach(function(c){
+    if(!recips.find(function(r){ return r.j === c.jid; })){
+      recips.push({j:c.jid, t:'personal', n:c.name});
+      added++;
+    }
+  });
+  renderR();
+  renderContacts(allContacts);
+  alert('Added ' + added + ' contacts!');
+}
+</script>
+</body>
+</html>
