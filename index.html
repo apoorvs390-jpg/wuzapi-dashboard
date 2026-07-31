@@ -4,7 +4,181 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WuzAPI Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+var selectedMembers = [];
+var allMembers = [];
+
+function toggleCreateGroup(){
+  var panel = document.getElementById('createGroupPanel');
+  if(panel.style.display === 'none'){
+    panel.style.display = 'block';
+    loadMembersForGroup();
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+async function loadMembersForGroup(){
+  document.getElementById('membersList').innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted)">Loading contacts...</div>';
+  try{
+    var d = await api('/user/contacts');
+    if(d.data){
+      allMembers = [];
+      var contacts = d.data;
+      if(typeof contacts === 'object' && !Array.isArray(contacts)){
+        Object.keys(contacts).forEach(function(jid){
+          var info = contacts[jid];
+          if(jid && jid.indexOf('@s.whatsapp.net') > -1){
+            var name = (info && (info.FullName || info.PushName || info.FirstName)) || jid.replace('@s.whatsapp.net','');
+            allMembers.push({jid:jid, name:name, num:jid.replace('@s.whatsapp.net','')});
+          }
+        });
+      }
+      allMembers.sort(function(a,b){ return a.name.localeCompare(b.name); });
+      renderMembers(allMembers);
+    }
+  } catch(e){
+    document.getElementById('membersList').innerHTML = '<div style="color:var(--danger);padding:10px">Error: '+e.message+'</div>';
+  }
+}
+
+function filterMembers(){
+  var q = document.getElementById('memberSearch').value.toLowerCase();
+  var filtered = allMembers.filter(function(m){
+    return m.name.toLowerCase().indexOf(q) > -1 || m.num.indexOf(q) > -1;
+  });
+  renderMembers(filtered);
+}
+
+function renderMembers(list){
+  if(!list || !list.length){
+    document.getElementById('membersList').innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted)">No contacts found</div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(m){
+    var isSelected = selectedMembers.find(function(s){ return s.jid === m.jid; });
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">'
+      + '<div><div style="font-weight:500;font-size:13px">'+m.name+'</div><div style="font-size:11px;color:var(--muted)">'+m.num+'</div></div>'
+      + (isSelected
+        ? '<button class="btn bsm" onclick="removeMemberById(this)" data-jid="'+m.jid+'" style="background:#ef4444;color:#fff;font-size:11px">Remove</button>'
+        : '<button class="btn bsm bo" onclick="addMemberById(this)" data-jid="'+m.jid+'" data-name="'+m.name.replace(/"/g,'')+'" data-num="'+m.num+'" style="font-size:11px">+ Add</button>')
+      + '</div>';
+  });
+  document.getElementById('membersList').innerHTML = html;
+}
+
+function addMemberById(btn){
+  var jid = btn.getAttribute('data-jid');
+  var name = btn.getAttribute('data-name');
+  var num = btn.getAttribute('data-num');
+  addMember(jid, name, num);
+}
+
+function addMember(jid, name, num){
+  if(!selectedMembers.find(function(s){ return s.jid === jid; })){
+    selectedMembers.push({jid:jid, name:name, num:num});
+    renderSelectedMembers();
+  }
+  var q = document.getElementById('memberSearch').value.toLowerCase();
+  var filtered = q ? allMembers.filter(function(m){ return m.name.toLowerCase().indexOf(q) > -1; }) : allMembers;
+  renderMembers(filtered);
+}
+
+function removeMemberById(btn){
+  var jid = btn.getAttribute('data-jid');
+  removeMember(jid);
+}
+
+function removeMember(jid){
+  selectedMembers = selectedMembers.filter(function(s){ return s.jid !== jid; });
+  renderSelectedMembers();
+  var q = document.getElementById('memberSearch').value.toLowerCase();
+  var filtered = q ? allMembers.filter(function(m){ return m.name.toLowerCase().indexOf(q) > -1; }) : allMembers;
+  renderMembers(filtered);
+}
+
+function renderSelectedMembers(){
+  document.getElementById('selectedCount').textContent = selectedMembers.length;
+  if(!selectedMembers.length){
+    document.getElementById('selectedMembers').innerHTML = '<span style="font-size:12px;color:var(--muted)">Koi member select nahi kiya</span>';
+    return;
+  }
+  document.getElementById('selectedMembers').innerHTML = selectedMembers.map(function(m){
+    return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMember(''+m.jid+'')">x</span></span>';
+  }).join('');
+}
+
+async function createGroup(){
+  var name = document.getElementById('newGroupName').value.trim();
+  if(!name){ alert('Group ka naam daalo!'); return; }
+  if(selectedMembers.length < 1){ alert('Kam se kam 1 member add karo!'); return; }
+
+  var status = document.getElementById('createGroupStatus');
+  status.style.color = 'var(--muted)';
+
+  try{
+    // Step 1: Create group with first member only
+    status.textContent = 'Group create ho raha hai...';
+    var firstMember = selectedMembers[0].jid;
+    var d = await api('/group/create', {
+      method: 'POST',
+      body: JSON.stringify({name: name, participants: [firstMember]})
+    });
+
+    if(!d.success){
+      status.textContent = 'Error: ' + (d.error || 'Group create nahi hua');
+      status.style.color = 'var(--danger)';
+      return;
+    }
+
+    var groupJID = d.data && (d.data.JID || d.data.jid || d.data.Id || d.data.id);
+    if(!groupJID){
+      status.textContent = 'Group ban gaya! (JID nahi mila, manually members add karo)';
+      status.style.color = 'var(--accent)';
+      return;
+    }
+
+    status.textContent = 'Group ban gaya! Ab members add ho rahe hain...';
+    status.style.color = 'var(--accent)';
+
+    // Step 2: Add remaining members in batches of 5 with delay
+    var remaining = selectedMembers.slice(1).map(function(m){ return m.jid; });
+    var batchSize = 20;
+    var delay = (Math.floor(Math.random()*6)+5)*1000; // 5-10 seconds random
+
+    for(var i = 0; i < remaining.length; i += batchSize){
+      var batch = remaining.slice(i, i + batchSize);
+      status.textContent = 'Members add ho rahe hain: ' + Math.min(i+batchSize, remaining.length) + '/' + remaining.length;
+
+      await api('/group/updateparticipants', {
+        method: 'POST',
+        body: JSON.stringify({groupJID: groupJID, participants: batch, action: 'add'})
+      });
+
+      if(i + batchSize < remaining.length){
+        var dMin = parseInt(document.getElementById('grpDelayMin').value)||5;
+        var dMax = parseInt(document.getElementById('grpDelayMax').value)||10;
+        var rndDelay = (Math.floor(Math.random()*(dMax-dMin+1))+dMin)*1000;
+        status.textContent = 'Waiting ' + Math.round(rndDelay/1000) + 's before next batch...';
+        await new Promise(function(res){ setTimeout(res, rndDelay); });
+      }
+    }
+
+    status.textContent = 'Group "'+name+'" mein ' + selectedMembers.length + ' members add ho gaye!';
+    status.style.color = 'var(--accent)';
+    document.getElementById('newGroupName').value = '';
+    selectedMembers = [];
+    renderSelectedMembers();
+    setTimeout(function(){ loadGrps(); }, 1000);
+
+  } catch(e){
+    status.textContent = 'Error: ' + e.message;
+    status.style.color = 'var(--danger)';
+  }
+}
+
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -237,7 +411,37 @@ tr:hover td{background:var(--surface2)}
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <button class="btn bg" onclick="loadGrps()">Refresh Groups</button>
       <button class="btn bo" onclick="addAllGrps()">Add All to Broadcast</button>
+      <button class="btn bo" onclick="toggleCreateGroup()" style="background:#6366f1;color:#fff;border:none">+ Create Group</button>
     </div>
+
+    <div id="createGroupPanel" style="display:none">
+      <div class="card" style="border:2px solid #6366f1;margin-bottom:12px">
+        <div class="ct" style="color:#6366f1">Create New Group</div>
+        <div style="margin-bottom:10px">
+          <label class="label">Group Name</label>
+          <input type="text" id="newGroupName" placeholder="Group ka naam daalo...">
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="label">Members add karo</label>
+          <input type="text" id="memberSearch" placeholder="Number ya naam search karo..." oninput="filterMembers()" style="margin-bottom:8px">
+          <div id="membersList" style="max-height:250px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px"></div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="label">Selected Members: <span id="selectedCount">0</span></label>
+          <div id="selectedMembers" style="display:flex;flex-wrap:wrap;gap:4px;min-height:30px;padding:6px;background:var(--bg);border-radius:8px;border:1px solid var(--border)"></div>
+        </div>
+        <div class="g2" style="margin-bottom:10px">
+          <div><label class="label">Min Delay (sec)</label><input type="number" id="grpDelayMin" value="5" min="1" max="60"></div>
+          <div><label class="label">Max Delay (sec)</label><input type="number" id="grpDelayMax" value="10" min="1" max="60"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bg" onclick="createGroup()" style="background:#6366f1">Create Group</button>
+          <button class="btn bo" onclick="toggleCreateGroup()">Cancel</button>
+        </div>
+        <div id="createGroupStatus" style="margin-top:8px;font-size:13px"></div>
+      </div>
+    </div>
+
     <div class="card">
       <table><thead><tr><th>Name</th><th>JID</th><th>Action</th></tr></thead>
       <tbody id="gt"><tr><td colspan="3" style="color:var(--muted);text-align:center;padding:1.5rem">Refresh Groups dabao</td></tr></tbody></table>
@@ -723,6 +927,180 @@ function addAllContacts(){
   renderContacts(allContacts);
   alert('Added ' + added + ' contacts!');
 }
+
+var selectedMembers = [];
+var allMembers = [];
+
+function toggleCreateGroup(){
+  var panel = document.getElementById('createGroupPanel');
+  if(panel.style.display === 'none'){
+    panel.style.display = 'block';
+    loadMembersForGroup();
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+async function loadMembersForGroup(){
+  document.getElementById('membersList').innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted)">Loading contacts...</div>';
+  try{
+    var d = await api('/user/contacts');
+    if(d.data){
+      allMembers = [];
+      var contacts = d.data;
+      if(typeof contacts === 'object' && !Array.isArray(contacts)){
+        Object.keys(contacts).forEach(function(jid){
+          var info = contacts[jid];
+          if(jid && jid.indexOf('@s.whatsapp.net') > -1){
+            var name = (info && (info.FullName || info.PushName || info.FirstName)) || jid.replace('@s.whatsapp.net','');
+            allMembers.push({jid:jid, name:name, num:jid.replace('@s.whatsapp.net','')});
+          }
+        });
+      }
+      allMembers.sort(function(a,b){ return a.name.localeCompare(b.name); });
+      renderMembers(allMembers);
+    }
+  } catch(e){
+    document.getElementById('membersList').innerHTML = '<div style="color:var(--danger);padding:10px">Error: '+e.message+'</div>';
+  }
+}
+
+function filterMembers(){
+  var q = document.getElementById('memberSearch').value.toLowerCase();
+  var filtered = allMembers.filter(function(m){
+    return m.name.toLowerCase().indexOf(q) > -1 || m.num.indexOf(q) > -1;
+  });
+  renderMembers(filtered);
+}
+
+function renderMembers(list){
+  if(!list || !list.length){
+    document.getElementById('membersList').innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted)">No contacts found</div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(m){
+    var isSelected = selectedMembers.find(function(s){ return s.jid === m.jid; });
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">'
+      + '<div><div style="font-weight:500;font-size:13px">'+m.name+'</div><div style="font-size:11px;color:var(--muted)">'+m.num+'</div></div>'
+      + (isSelected
+        ? '<button class="btn bsm" onclick="removeMemberById(this)" data-jid="'+m.jid+'" style="background:#ef4444;color:#fff;font-size:11px">Remove</button>'
+        : '<button class="btn bsm bo" onclick="addMemberById(this)" data-jid="'+m.jid+'" data-name="'+m.name.replace(/"/g,'')+'" data-num="'+m.num+'" style="font-size:11px">+ Add</button>')
+      + '</div>';
+  });
+  document.getElementById('membersList').innerHTML = html;
+}
+
+function addMemberById(btn){
+  var jid = btn.getAttribute('data-jid');
+  var name = btn.getAttribute('data-name');
+  var num = btn.getAttribute('data-num');
+  addMember(jid, name, num);
+}
+
+function addMember(jid, name, num){
+  if(!selectedMembers.find(function(s){ return s.jid === jid; })){
+    selectedMembers.push({jid:jid, name:name, num:num});
+    renderSelectedMembers();
+  }
+  var q = document.getElementById('memberSearch').value.toLowerCase();
+  var filtered = q ? allMembers.filter(function(m){ return m.name.toLowerCase().indexOf(q) > -1; }) : allMembers;
+  renderMembers(filtered);
+}
+
+function removeMemberById(btn){
+  var jid = btn.getAttribute('data-jid');
+  removeMember(jid);
+}
+
+function removeMember(jid){
+  selectedMembers = selectedMembers.filter(function(s){ return s.jid !== jid; });
+  renderSelectedMembers();
+  var q = document.getElementById('memberSearch').value.toLowerCase();
+  var filtered = q ? allMembers.filter(function(m){ return m.name.toLowerCase().indexOf(q) > -1; }) : allMembers;
+  renderMembers(filtered);
+}
+
+function renderSelectedMembers(){
+  document.getElementById('selectedCount').textContent = selectedMembers.length;
+  if(!selectedMembers.length){
+    document.getElementById('selectedMembers').innerHTML = '<span style="font-size:12px;color:var(--muted)">Koi member select nahi kiya</span>';
+    return;
+  }
+  document.getElementById('selectedMembers').innerHTML = selectedMembers.map(function(m){
+    return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMember(''+m.jid+'')">x</span></span>';
+  }).join('');
+}
+
+async function createGroup(){
+  var name = document.getElementById('newGroupName').value.trim();
+  if(!name){ alert('Group ka naam daalo!'); return; }
+  if(selectedMembers.length < 1){ alert('Kam se kam 1 member add karo!'); return; }
+
+  var status = document.getElementById('createGroupStatus');
+  status.style.color = 'var(--muted)';
+
+  try{
+    // Step 1: Create group with first member only
+    status.textContent = 'Group create ho raha hai...';
+    var firstMember = selectedMembers[0].jid;
+    var d = await api('/group/create', {
+      method: 'POST',
+      body: JSON.stringify({name: name, participants: [firstMember]})
+    });
+
+    if(!d.success){
+      status.textContent = 'Error: ' + (d.error || 'Group create nahi hua');
+      status.style.color = 'var(--danger)';
+      return;
+    }
+
+    var groupJID = d.data && (d.data.JID || d.data.jid || d.data.Id || d.data.id);
+    if(!groupJID){
+      status.textContent = 'Group ban gaya! (JID nahi mila, manually members add karo)';
+      status.style.color = 'var(--accent)';
+      return;
+    }
+
+    status.textContent = 'Group ban gaya! Ab members add ho rahe hain...';
+    status.style.color = 'var(--accent)';
+
+    // Step 2: Add remaining members in batches of 5 with delay
+    var remaining = selectedMembers.slice(1).map(function(m){ return m.jid; });
+    var batchSize = 20;
+    var delay = (Math.floor(Math.random()*6)+5)*1000; // 5-10 seconds random
+
+    for(var i = 0; i < remaining.length; i += batchSize){
+      var batch = remaining.slice(i, i + batchSize);
+      status.textContent = 'Members add ho rahe hain: ' + Math.min(i+batchSize, remaining.length) + '/' + remaining.length;
+
+      await api('/group/updateparticipants', {
+        method: 'POST',
+        body: JSON.stringify({groupJID: groupJID, participants: batch, action: 'add'})
+      });
+
+      if(i + batchSize < remaining.length){
+        var dMin = parseInt(document.getElementById('grpDelayMin').value)||5;
+        var dMax = parseInt(document.getElementById('grpDelayMax').value)||10;
+        var rndDelay = (Math.floor(Math.random()*(dMax-dMin+1))+dMin)*1000;
+        status.textContent = 'Waiting ' + Math.round(rndDelay/1000) + 's before next batch...';
+        await new Promise(function(res){ setTimeout(res, rndDelay); });
+      }
+    }
+
+    status.textContent = 'Group "'+name+'" mein ' + selectedMembers.length + ' members add ho gaye!';
+    status.style.color = 'var(--accent)';
+    document.getElementById('newGroupName').value = '';
+    selectedMembers = [];
+    renderSelectedMembers();
+    setTimeout(function(){ loadGrps(); }, 1000);
+
+  } catch(e){
+    status.textContent = 'Error: ' + e.message;
+    status.style.color = 'var(--danger)';
+  }
+}
+
 </script>
 </body>
 </html>
