@@ -62,7 +62,7 @@ function renderMembers(list){
       + '<div><div style="font-weight:500;font-size:13px">'+m.name+'</div><div style="font-size:11px;color:var(--muted)">'+m.num+'</div></div>'
       + (isSelected
     return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMemberById(this)" data-jid="'+m.jid+'">x</span></span>';
-        : '<button class="btn bsm bo" onclick="addMemberById(this)" data-jid="'+m.jid+'" data-name="'+m.name.replace(/"/g,'')+'" data-num="'+m.num+'" style="font-size:11px">+ Add</button>')
+        : '<button class="btn bsm bo" onclick="addMemberById(this)" data-jid="'+m.jid+'" data-name="'+m.name+'" data-num="'+m.num+'" style="font-size:11px">+ Add</button>')
       + '</div>';
   });
   document.getElementById('membersList').innerHTML = html;
@@ -997,7 +997,7 @@ function renderMembers(list){
       + '<div><div style="font-weight:500;font-size:13px">'+m.name+'</div><div style="font-size:11px;color:var(--muted)">'+m.num+'</div></div>'
       + (isSelected
     return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMemberById(this)" data-jid="'+m.jid+'">x</span></span>';
-        : '<button class="btn bsm bo" onclick="addMemberById(this)" data-jid="'+m.jid+'" data-name="'+m.name.replace(/"/g,'')+'" data-num="'+m.num+'" style="font-size:11px">+ Add</button>')
+        : '<button class="btn bsm bo" onclick="addMemberById(this)" data-jid="'+m.jid+'" data-name="'+m.name+'" data-num="'+m.num+'" style="font-size:11px">+ Add</button>')
       + '</div>';
   });
   document.getElementById('membersList').innerHTML = html;
