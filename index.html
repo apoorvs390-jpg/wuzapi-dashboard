@@ -61,7 +61,7 @@ function renderMembers(list){
     html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">'
       + '<div><div style="font-weight:500;font-size:13px">'+m.name+'</div><div style="font-size:11px;color:var(--muted)">'+m.num+'</div></div>'
       + (isSelected
-        ? '<button class="btn bsm" onclick="removeMemberById(this)" data-jid="'+m.jid+'" style="background:#ef4444;color:#fff;font-size:11px">Remove</button>'
+    return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMemberById(this)" data-jid="'+m.jid+'">x</span></span>';
         : '<button class="btn bsm bo" onclick="addMemberById(this)" data-jid="'+m.jid+'" data-name="'+m.name.replace(/"/g,'')+'" data-num="'+m.num+'" style="font-size:11px">+ Add</button>')
       + '</div>';
   });
@@ -105,7 +105,7 @@ function renderSelectedMembers(){
     return;
   }
   document.getElementById('selectedMembers').innerHTML = selectedMembers.map(function(m){
-    return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMember(''+m.jid+'')">x</span></span>';
+    return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMemberById(this)" data-jid="'+m.jid+'">x</span></span>';
   }).join('');
 }
 
@@ -270,7 +270,7 @@ tr:hover td{background:var(--surface2)}
     <div class="ni" onclick="go('groups')">Groups</div>
     <div class="ni" onclick="go('contacts')">Contacts</div>
   </nav>
-  <div style="padding:1rem;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">v3.0 · WuzAPI</div>
+  <div style="padding:1rem;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">v3.0 &#183; WuzAPI</div>
 </div>
 
 <div class="main">
@@ -323,7 +323,7 @@ tr:hover td{background:var(--surface2)}
 
   <div class="sec" id="s-broadcast">
     <div class="pt">Bulk Broadcast</div><div class="ps">Messages + attachments bhejo</div>
-    <div class="alert">Add delay zaroor rakho — WhatsApp ban se bachne ke liye!</div>
+    <div class="alert">Add delay zaroor rakho &#8212; WhatsApp ban se bachne ke liye!</div>
     <div class="g2">
       <div style="display:flex;flex-direction:column;gap:1rem">
         <div class="card">
@@ -823,10 +823,16 @@ function renderGrps(){
     var safeName = gname.replace(/"/g, '').replace(/'/g, '');
     var btn = isAdded
       ? '<span class="added-badge">Added</span>'
-      : '<button class="btn bsm bg" onclick="addGrp(\'' + safeJid + '\',\'' + safeName + '\')">+ Add</button>';
+      : '<button class="btn bsm bg" onclick="addGrp(this)" data-jid="'+safeJid+'" data-name="'+safeName+'">+ Add</button>';
     html += '<tr><td><b>' + gname + '</b></td><td style="font-size:11px;color:var(--muted)">' + jid + '</td><td>' + btn + '</td></tr>';
   });
   document.getElementById('gt').innerHTML = html;
+}
+
+function addGrpById(btn){
+  var jid = btn.getAttribute('data-jid');
+  var name = btn.getAttribute('data-name');
+  addGrp(jid, name);
 }
 
 function addGrp(jid, name){
@@ -890,7 +896,7 @@ function renderContacts(list){
       + '<div><div style="font-weight:500">' + c.name + '</div><div style="font-size:11px;color:var(--muted)">' + num + '</div></div>'
       + (isAdded
         ? '<span class="added-badge">Added</span>'
-        : '<button class="btn bsm bg" onclick="addContact(\'' + num + '\',\'' + safeName + '\')">+ Add</button>')
+        : '<button class="btn bsm bg" onclick="addContactById(this)" data-num="'+num+'" data-name="'+safeName+'">+ Add</button>')
       + '</div>';
   });
   document.getElementById('ctList').innerHTML = html;
@@ -902,6 +908,12 @@ function filterContacts(){
     return c.name.toLowerCase().indexOf(q) > -1 || c.jid.indexOf(q) > -1;
   });
   renderContacts(filtered);
+}
+
+function addContactById(btn){
+  var num = btn.getAttribute('data-num');
+  var name = btn.getAttribute('data-name');
+  addContact(num, name);
 }
 
 function addContact(num, name){
@@ -984,7 +996,7 @@ function renderMembers(list){
     html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">'
       + '<div><div style="font-weight:500;font-size:13px">'+m.name+'</div><div style="font-size:11px;color:var(--muted)">'+m.num+'</div></div>'
       + (isSelected
-        ? '<button class="btn bsm" onclick="removeMemberById(this)" data-jid="'+m.jid+'" style="background:#ef4444;color:#fff;font-size:11px">Remove</button>'
+    return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMemberById(this)" data-jid="'+m.jid+'">x</span></span>';
         : '<button class="btn bsm bo" onclick="addMemberById(this)" data-jid="'+m.jid+'" data-name="'+m.name.replace(/"/g,'')+'" data-num="'+m.num+'" style="font-size:11px">+ Add</button>')
       + '</div>';
   });
@@ -1028,7 +1040,7 @@ function renderSelectedMembers(){
     return;
   }
   document.getElementById('selectedMembers').innerHTML = selectedMembers.map(function(m){
-    return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMember(''+m.jid+'')">x</span></span>';
+    return '<span class="tag tp">'+m.name.substring(0,15)+'<span class="tx" onclick="removeMemberById(this)" data-jid="'+m.jid+'">x</span></span>';
   }).join('');
 }
 
