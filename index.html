@@ -9,9 +9,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1e2130;--sur:#252836;--sur2:#2d3147;--bdr:#3a3f5c;--acc:#25d366;--dan:#ef4444;--wrn:#f59e0b;--txt:#e2e8f0;--mut:#9aa5b4;--r:12px}
 body{background:var(--bg);color:var(--txt);font-family:Segoe UI,system-ui,sans-serif;min-height:100vh}
-.layout{display:flex;min-height:100vh}
+.layout{display:flex;min-height:100vh;width:100%}
 .sidebar{width:200px;background:var(--sur);border-right:1px solid var(--bdr);position:fixed;height:100vh;display:flex;flex-direction:column}
-.main{margin-left:200px;padding:1.2rem}
+.main{margin-left:200px;padding:1.2rem;min-height:100vh;width:calc(100vw - 200px)}
 .logo{padding:1rem;border-bottom:1px solid var(--bdr);font-size:16px;font-weight:700;color:var(--acc)}
 .nav{padding:.5rem 0;flex:1}
 .ni{padding:10px 1rem;font-size:13px;color:var(--mut);cursor:pointer;border-left:3px solid transparent}
