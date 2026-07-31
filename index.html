@@ -4,7 +4,113 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WuzAPI Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+var addMemGrpIdx = -1;
+var addMemSelected = [];
+
+function openAddMem(idx) {
+  addMemGrpIdx = idx;
+  addMemSelected = [];
+  var g = allGroups[idx];
+  var name = g ? (g.Name || g.GroupName || g.Subject || 'Unnamed') : '';
+  document.getElementById('addMemGrpName').textContent = 'Group: ' + name;
+  document.getElementById('addMemSearch').value = '';
+  renderAddMemList(allContacts);
+  renderAddMemSel();
+  document.getElementById('addMemStatus').textContent = '';
+  document.getElementById('addMemModal').style.display = 'flex';
+}
+
+function closeAddMem() {
+  document.getElementById('addMemModal').style.display = 'none';
+}
+
+function filterAddMem() {
+  var q = document.getElementById('addMemSearch').value.toLowerCase();
+  var filtered = allContacts.filter(function(c) { return c.name.toLowerCase().indexOf(q) > -1 || c.jid.indexOf(q) > -1; });
+  renderAddMemList(filtered);
+}
+
+function renderAddMemList(list) {
+  if (!list || !list.length) {
+    document.getElementById('addMemList').innerHTML = '<div style="text-align:center;padding:10px;color:var(--mut);font-size:12px">No contacts. Load Contacts pehle.</div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(c, i) {
+    var isSel = !!addMemSelected.find(function(s) { return s.jid === c.jid; });
+    var realIdx = allContacts.indexOf(c);
+    var num = c.jid.replace('@s.whatsapp.net', '');
+    var btn = isSel
+      ? '<span class="ok" style="font-size:11px">Added</span>'
+      : '<button class="btn bo bsm" onclick="addToMemSel(' + realIdx + ')" style="font-size:11px">+ Add</button>';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 3px;border-bottom:1px solid var(--bdr)"><div><div style="font-size:12px;font-weight:500">' + c.name + '</div><div style="font-size:10px;color:var(--mut)">' + num + '</div></div>' + btn + '</div>';
+  });
+  document.getElementById('addMemList').innerHTML = html;
+}
+
+function addToMemSel(idx) {
+  var c = allContacts[idx];
+  if (!c) return;
+  if (!addMemSelected.find(function(s) { return s.jid === c.jid; })) {
+    addMemSelected.push(c);
+    renderAddMemSel();
+  }
+  var q = document.getElementById('addMemSearch').value.toLowerCase();
+  renderAddMemList(q ? allContacts.filter(function(c) { return c.name.toLowerCase().indexOf(q) > -1; }) : allContacts);
+}
+
+function remFromMemSel(idx) {
+  addMemSelected.splice(idx, 1);
+  renderAddMemSel();
+  var q = document.getElementById('addMemSearch').value.toLowerCase();
+  renderAddMemList(q ? allContacts.filter(function(c) { return c.name.toLowerCase().indexOf(q) > -1; }) : allContacts);
+}
+
+function renderAddMemSel() {
+  document.getElementById('addMemSelCnt').textContent = addMemSelected.length;
+  if (!addMemSelected.length) {
+    document.getElementById('addMemSel').innerHTML = '<span style="font-size:11px;color:var(--mut)">Koi select nahi</span>';
+    return;
+  }
+  var html = '';
+  addMemSelected.forEach(function(m, i) {
+    html += '<span class="tag tp">' + m.name.substring(0, 15) + '<span class="tx" onclick="remFromMemSel(' + i + ')">x</span></span>';
+  });
+  document.getElementById('addMemSel').innerHTML = html;
+}
+
+async function doAddMem() {
+  if (addMemGrpIdx < 0) return;
+  if (!addMemSelected.length) return alert('Members select karo!');
+  var g = allGroups[addMemGrpIdx];
+  var gJID = g ? (g.JID || g.Id || '') : '';
+  if (!gJID) return alert('Group JID nahi mila!');
+  var st = document.getElementById('addMemStatus');
+  var phones = addMemSelected.map(function(m) { return m.jid; });
+  var batchSize = 20;
+  var dMin = parseInt(document.getElementById('addMemMin').value) || 3;
+  var dMax = parseInt(document.getElementById('addMemMax').value) || 8;
+  st.style.color = 'var(--mut)';
+  for (var i = 0; i < phones.length; i += batchSize) {
+    var batch = phones.slice(i, i + batchSize);
+    st.textContent = 'Adding: ' + Math.min(i + batchSize, phones.length) + '/' + phones.length;
+    try {
+      await apiFetch('/group/updateparticipants', 'POST', { GroupJID: gJID, Phone: batch, Action: 'add' });
+    } catch (e) { st.textContent = 'Error: ' + e.message; st.style.color = 'var(--dan)'; return; }
+    if (i + batchSize < phones.length) {
+      var dl = Math.floor(Math.random() * (dMax - dMin + 1) + dMin);
+      st.textContent = 'Waiting ' + dl + 's...';
+      await new Promise(function(res) { setTimeout(res, dl * 1000); });
+    }
+  }
+  st.textContent = addMemSelected.length + ' members add ho gaye!';
+  st.style.color = 'var(--acc)';
+  addMemSelected = [];
+  renderAddMemSel();
+}
+
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1e2130;--sur:#252836;--sur2:#2d3147;--bdr:#3a3f5c;--acc:#25d366;--dan:#ef4444;--wrn:#f59e0b;--txt:#e2e8f0;--mut:#9aa5b4;--r:12px}
@@ -603,7 +709,8 @@ function renderGroups() {
     var name = g.Name || g.GroupName || g.Subject || 'Unnamed';
     var isAdded = !!recips.find(function(r) { return r.j === jid; });
     var btn = isAdded ? '<span class="ok">Added</span>' : '<button class="btn bg bsm" onclick="addGrp(' + idx + ')">+ Add</button>';
-    html += '<tr><td><b>' + name + '</b></td><td style="font-size:11px;color:var(--mut)">' + jid + '</td><td>' + btn + '</td></tr>';
+    var memBtn = '<button class="btn bo bsm" onclick="openAddMem(' + idx + ')" style="margin-left:4px">+ Members</button>';
+    html += '<tr><td><b>' + name + '</b></td><td style="font-size:11px;color:var(--mut)">' + jid + '</td><td>' + btn + memBtn + '</td></tr>';
   });
   document.getElementById('grpTbl').innerHTML = html;
 }
@@ -795,6 +902,135 @@ async function createGroup() {
     setTimeout(loadGroups, 1000);
   } catch (e) { st.textContent = 'Error: ' + e.message; st.style.color = 'var(--dan)'; }
 }
+
+var addMemGrpIdx = -1;
+var addMemSelected = [];
+
+function openAddMem(idx) {
+  addMemGrpIdx = idx;
+  addMemSelected = [];
+  var g = allGroups[idx];
+  var name = g ? (g.Name || g.GroupName || g.Subject || 'Unnamed') : '';
+  document.getElementById('addMemGrpName').textContent = 'Group: ' + name;
+  document.getElementById('addMemSearch').value = '';
+  renderAddMemList(allContacts);
+  renderAddMemSel();
+  document.getElementById('addMemStatus').textContent = '';
+  document.getElementById('addMemModal').style.display = 'flex';
+}
+
+function closeAddMem() {
+  document.getElementById('addMemModal').style.display = 'none';
+}
+
+function filterAddMem() {
+  var q = document.getElementById('addMemSearch').value.toLowerCase();
+  var filtered = allContacts.filter(function(c) { return c.name.toLowerCase().indexOf(q) > -1 || c.jid.indexOf(q) > -1; });
+  renderAddMemList(filtered);
+}
+
+function renderAddMemList(list) {
+  if (!list || !list.length) {
+    document.getElementById('addMemList').innerHTML = '<div style="text-align:center;padding:10px;color:var(--mut);font-size:12px">No contacts. Load Contacts pehle.</div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(c, i) {
+    var isSel = !!addMemSelected.find(function(s) { return s.jid === c.jid; });
+    var realIdx = allContacts.indexOf(c);
+    var num = c.jid.replace('@s.whatsapp.net', '');
+    var btn = isSel
+      ? '<span class="ok" style="font-size:11px">Added</span>'
+      : '<button class="btn bo bsm" onclick="addToMemSel(' + realIdx + ')" style="font-size:11px">+ Add</button>';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 3px;border-bottom:1px solid var(--bdr)"><div><div style="font-size:12px;font-weight:500">' + c.name + '</div><div style="font-size:10px;color:var(--mut)">' + num + '</div></div>' + btn + '</div>';
+  });
+  document.getElementById('addMemList').innerHTML = html;
+}
+
+function addToMemSel(idx) {
+  var c = allContacts[idx];
+  if (!c) return;
+  if (!addMemSelected.find(function(s) { return s.jid === c.jid; })) {
+    addMemSelected.push(c);
+    renderAddMemSel();
+  }
+  var q = document.getElementById('addMemSearch').value.toLowerCase();
+  renderAddMemList(q ? allContacts.filter(function(c) { return c.name.toLowerCase().indexOf(q) > -1; }) : allContacts);
+}
+
+function remFromMemSel(idx) {
+  addMemSelected.splice(idx, 1);
+  renderAddMemSel();
+  var q = document.getElementById('addMemSearch').value.toLowerCase();
+  renderAddMemList(q ? allContacts.filter(function(c) { return c.name.toLowerCase().indexOf(q) > -1; }) : allContacts);
+}
+
+function renderAddMemSel() {
+  document.getElementById('addMemSelCnt').textContent = addMemSelected.length;
+  if (!addMemSelected.length) {
+    document.getElementById('addMemSel').innerHTML = '<span style="font-size:11px;color:var(--mut)">Koi select nahi</span>';
+    return;
+  }
+  var html = '';
+  addMemSelected.forEach(function(m, i) {
+    html += '<span class="tag tp">' + m.name.substring(0, 15) + '<span class="tx" onclick="remFromMemSel(' + i + ')">x</span></span>';
+  });
+  document.getElementById('addMemSel').innerHTML = html;
+}
+
+async function doAddMem() {
+  if (addMemGrpIdx < 0) return;
+  if (!addMemSelected.length) return alert('Members select karo!');
+  var g = allGroups[addMemGrpIdx];
+  var gJID = g ? (g.JID || g.Id || '') : '';
+  if (!gJID) return alert('Group JID nahi mila!');
+  var st = document.getElementById('addMemStatus');
+  var phones = addMemSelected.map(function(m) { return m.jid; });
+  var batchSize = 20;
+  var dMin = parseInt(document.getElementById('addMemMin').value) || 3;
+  var dMax = parseInt(document.getElementById('addMemMax').value) || 8;
+  st.style.color = 'var(--mut)';
+  for (var i = 0; i < phones.length; i += batchSize) {
+    var batch = phones.slice(i, i + batchSize);
+    st.textContent = 'Adding: ' + Math.min(i + batchSize, phones.length) + '/' + phones.length;
+    try {
+      await apiFetch('/group/updateparticipants', 'POST', { GroupJID: gJID, Phone: batch, Action: 'add' });
+    } catch (e) { st.textContent = 'Error: ' + e.message; st.style.color = 'var(--dan)'; return; }
+    if (i + batchSize < phones.length) {
+      var dl = Math.floor(Math.random() * (dMax - dMin + 1) + dMin);
+      st.textContent = 'Waiting ' + dl + 's...';
+      await new Promise(function(res) { setTimeout(res, dl * 1000); });
+    }
+  }
+  st.textContent = addMemSelected.length + ' members add ho gaye!';
+  st.style.color = 'var(--acc)';
+  addMemSelected = [];
+  renderAddMemSel();
+}
+
 </script>
+
+<!-- Add Members Modal -->
+<div id="addMemModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:1.2rem;width:500px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-weight:700;font-size:15px">Add Members to Group</div>
+      <button class="btn bo bsm" onclick="closeAddMem()">X Close</button>
+    </div>
+    <div id="addMemGrpName" style="font-size:13px;color:var(--mut);margin-bottom:.8rem"></div>
+    <input id="addMemSearch" placeholder="Search contacts..." oninput="filterAddMem()" style="margin-bottom:8px">
+    <div id="addMemList" style="max-height:250px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px;padding:4px;margin-bottom:8px"></div>
+    <div style="margin-bottom:8px">
+      <span style="font-size:12px;color:var(--mut)">Selected: <span id="addMemSelCnt">0</span></span>
+      <div id="addMemSel" class="rbox" style="margin-top:4px"><span style="font-size:11px;color:var(--mut)">Koi select nahi</span></div>
+    </div>
+    <div class="g2" style="margin-bottom:8px">
+      <div><span class="lbl">Min Delay (sec)</span><input type="number" id="addMemMin" value="3" min="1" max="60"></div>
+      <div><span class="lbl">Max Delay (sec)</span><input type="number" id="addMemMax" value="8" min="1" max="60"></div>
+    </div>
+    <button class="btn bg" onclick="doAddMem()" style="width:100%">Add Members to Group</button>
+    <div id="addMemStatus" style="margin-top:8px;font-size:12px"></div>
+  </div>
+</div>
 </body>
 </html>
