@@ -779,7 +779,7 @@ async function createGroup() {
       for (var i = 0; i < remaining.length; i += batchSize) {
         var batch = remaining.slice(i, i + batchSize);
         st.textContent = 'Members: ' + Math.min(i + batchSize, remaining.length) + '/' + remaining.length;
-        await apiFetch('/group/updateparticipants', 'POST', { groupJID: gJID, participants: batch, action: 'add' });
+        await apiFetch('/group/updateparticipants', 'POST', { GroupJID: gJID, Phone: batch, Action: 'add' });
         if (i + batchSize < remaining.length) {
           var dl = Math.floor(Math.random() * (gMax - gMin + 1) + gMin);
           st.textContent = 'Waiting ' + dl + 's...';
