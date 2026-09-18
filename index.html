@@ -672,9 +672,18 @@ async function sendOne(jid) {
   else if (fType === 'video') { ep = '/chat/send/video'; body = { phone: jid, video: fData, caption: cap }; }
   else if (fType === 'document') { ep = '/chat/send/document'; body = { phone: jid, document: fData, filename: fName, caption: cap }; }
   else { ep = '/chat/send/text'; body = { phone: jid, body: cap }; }
-  var r = await fetch(U() + ep, { method: 'POST', headers: { 'Token': T(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  var d = await r.json();
-  return r.ok && d.success;
+  // Media uploads can hang indefinitely on a slow/shared proxy, which used
+  // to freeze the whole broadcast and make Stop unresponsive. Abort after
+  // 90s so a stuck request fails instead of hanging forever.
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() { controller.abort(); }, 90000);
+  try {
+    var r = await fetch(U() + ep, { method: 'POST', headers: { 'Token': T(), 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
+    var d = await r.json();
+    return r.ok && d.success;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function startBC() {
