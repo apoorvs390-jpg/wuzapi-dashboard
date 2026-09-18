@@ -441,22 +441,42 @@ async function loadHealth() {
   } catch (e) {}
 }
 
+function sleep(ms) { return new Promise(function(res) { setTimeout(res, ms); }); }
+
 async function getQR() {
-  document.getElementById('qrmsg').textContent = 'Loading...';
+  document.getElementById('qrbox').innerHTML = '';
+  document.getElementById('qrmsg').textContent = 'Starting session...';
   try {
     await apiFetch('/session/connect', 'POST', { subscribe: ['Message'], immediate: true });
   } catch (e) {}
-  try {
-    var d = await apiFetch('/session/qr');
-    if (d.data && d.data.QRCode) {
-      document.getElementById('qrbox').innerHTML = '<img src="' + d.data.QRCode + '" style="width:220px;height:220px;border-radius:8px">';
-      document.getElementById('qrmsg').textContent = 'Scan karo!';
-    } else {
-      document.getElementById('qrmsg').textContent = 'Already connected ya error';
+
+  // The server starts connecting in the background and only writes the QR
+  // code to the DB once WhatsApp actually hands one back — that can take a
+  // couple of seconds, so poll instead of asking once immediately.
+  var maxAttempts = 15; // ~15s total
+  for (var i = 0; i < maxAttempts; i++) {
+    await sleep(1000);
+    document.getElementById('qrmsg').textContent = 'Waiting for QR... (' + (i + 1) + 's)';
+    try {
+      var d = await apiFetch('/session/qr');
+      if (d.data && d.data.QRCode) {
+        document.getElementById('qrbox').innerHTML = '<img src="' + d.data.QRCode + '" style="width:220px;height:220px;border-radius:8px">';
+        document.getElementById('qrmsg').textContent = 'Scan karo!';
+        return;
+      }
+      // If server says "already logged in" or similar, stop polling and show it.
+      if (d.error && /already logged in/i.test(d.error)) {
+        document.getElementById('qrmsg').textContent = 'Already logged in — disconnect/logout first to get a new QR.';
+        return;
+      }
+      // "no session" / "not connected" on early attempts just means the
+      // background connect hasn't finished yet — keep polling.
+    } catch (e) {
+      document.getElementById('qrmsg').textContent = 'Error: ' + e.message;
+      return;
     }
-  } catch (e) {
-    document.getElementById('qrmsg').textContent = 'Error: ' + e.message;
   }
+  document.getElementById('qrmsg').textContent = 'Timed out waiting for QR. Check server logs / token / connection.';
 }
 
 async function connSess() {
