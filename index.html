@@ -224,6 +224,7 @@ tr:hover td{background:var(--sur2)}
         <button class="btn bo" onclick="connSess()">Connect Session</button>
         <button class="btn bo" onclick="checkStat()">Check Status</button>
         <button class="btn br" onclick="discSess()">Disconnect</button>
+        <button class="btn br" onclick="logoutSess()">Logout (unlink phone)</button>
       </div>
       <div style="margin-top:1rem">
         <div class="ct">Pair via Phone</div>
@@ -497,6 +498,17 @@ async function checkStat() {
 async function discSess() {
   if (!confirm('Disconnect?')) return;
   try { await apiFetch('/session/disconnect', 'POST', {}); document.getElementById('sessInfo').textContent = 'Disconnected'; } catch (e) {}
+}
+
+async function logoutSess() {
+  if (!confirm('Logout will fully unlink this phone number. A new QR code will be needed to connect any phone again (yours or anyone else\'s who has this token). Continue?')) return;
+  document.getElementById('sessInfo').textContent = 'Logging out...';
+  try {
+    var d = await apiFetch('/session/logout', 'POST', {});
+    document.getElementById('sessInfo').textContent = d.success ? 'Logged out. Phone unlinked — click Get QR Code to link a new phone.' : (d.error || 'Logout failed');
+  } catch (e) {
+    document.getElementById('sessInfo').textContent = 'Error: ' + e.message;
+  }
 }
 
 async function pairPhone() {
