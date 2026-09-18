@@ -676,7 +676,7 @@ async function sendOne(jid) {
   // to freeze the whole broadcast and make Stop unresponsive. Abort after
   // 90s so a stuck request fails instead of hanging forever.
   var controller = new AbortController();
-  var timeoutId = setTimeout(function() { controller.abort(); }, 90000);
+  var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
   try {
     var r = await fetch(U() + ep, { method: 'POST', headers: { 'Token': T(), 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
     var d = await r.json();
