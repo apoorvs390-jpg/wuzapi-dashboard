@@ -225,6 +225,7 @@ tr:hover td{background:var(--sur2)}
         <button class="btn bo" onclick="checkStat()">Check Status</button>
         <button class="btn br" onclick="discSess()">Disconnect</button>
         <button class="btn br" onclick="logoutSess()">Logout (unlink phone)</button>
+        <button class="btn br" onclick="forceResetSess()">Force Reset (stuck pairing)</button>
       </div>
       <div style="margin-top:1rem">
         <div class="ct">Pair via Phone</div>
@@ -506,6 +507,17 @@ async function logoutSess() {
   try {
     var d = await apiFetch('/session/logout', 'POST', {});
     document.getElementById('sessInfo').textContent = d.success ? 'Logged out. Phone unlinked — click Get QR Code to link a new phone.' : (d.error || 'Logout failed');
+  } catch (e) {
+    document.getElementById('sessInfo').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function forceResetSess() {
+  if (!confirm('Force Reset clears any stuck/stale phone pairing even if the connection is currently broken. Use this only if normal Logout doesn\'t work and Get QR Code keeps timing out. Continue?')) return;
+  document.getElementById('sessInfo').textContent = 'Force resetting...';
+  try {
+    var d = await apiFetch('/session/forcereset', 'POST', {});
+    document.getElementById('sessInfo').textContent = d.success ? 'Reset done. Click Get QR Code to link a new phone.' : (d.error || 'Force reset failed');
   } catch (e) {
     document.getElementById('sessInfo').textContent = 'Error: ' + e.message;
   }
