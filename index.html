@@ -507,6 +507,9 @@ async function logoutSess() {
   try {
     var d = await apiFetch('/session/logout', 'POST', {});
     document.getElementById('sessInfo').textContent = d.success ? 'Logged out. Phone unlinked — click Get QR Code to link a new phone.' : (d.error || 'Logout failed');
+    recips = [];
+    localStorage.removeItem('wuzapi_recips');
+    renderR();
   } catch (e) {
     document.getElementById('sessInfo').textContent = 'Error: ' + e.message;
   }
@@ -628,6 +631,7 @@ function clrR() { recips = []; renderR(); }
 
 function renderR() {
   document.getElementById('rCnt').textContent = recips.length;
+  saveRecips();
   var b = document.getElementById('rBox');
   if (!recips.length) { b.innerHTML = '<span style="font-size:11px;color:var(--mut)">No recipients</span>'; return; }
   var html = '';
@@ -640,8 +644,38 @@ function renderR() {
   b.innerHTML = html;
 }
 
+function saveRecips() {
+  try { localStorage.setItem('wuzapi_recips', JSON.stringify(recips)); } catch (e) {}
+}
+
+function loadRecips() {
+  try {
+    var saved = localStorage.getItem('wuzapi_recips');
+    if (saved) recips = JSON.parse(saved) || [];
+  } catch (e) {}
+}
+loadRecips();
+renderR();
+
 function onDrop(e) { e.preventDefault(); if (e.dataTransfer.files[0]) procFile(e.dataTransfer.files[0]); }
 function onFile(i) { if (i.files[0]) procFile(i.files[0]); }
+
+document.addEventListener('paste', function(e) {
+  // Only handle image paste while the Broadcast section is active, so an
+  // image copied from anywhere (right-click "Copy image" in any browser)
+  // can be pasted straight into the attachment box with Ctrl+V.
+  var bcSection = document.getElementById('sec-broadcast');
+  if (!bcSection || !bcSection.classList.contains('act')) return;
+  var items = (e.clipboardData || window.clipboardData).items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      var file = items[i].getAsFile();
+      if (file) { procFile(file); e.preventDefault(); }
+      break;
+    }
+  }
+});
 
 function procFile(file) {
   var rd = new FileReader();
