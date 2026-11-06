@@ -250,9 +250,15 @@ tr:hover td{background:var(--sur2)}
         <div id="bcCats" style="display:flex;flex-wrap:wrap;gap:5px"></div>
         <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
           <button class="btn bg bsm" onclick="catApply(false)">Recipients me jodo</button>
-          <button class="btn bo bsm" onclick="catApply(true)">Sirf inhe rakho</button>
           <button class="btn bo bsm" onclick="bcSel={};catBcRender()">Clear</button>
           <span id="bcCatInfo" style="font-size:12px;color:var(--mut)"></span>
+        </div>
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bdr)">
+          <span class="lbl">Jo groups abhi Recipients me chune hain, unhe category me daalo</span>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <select id="bcAssign" style="flex:1;min-width:140px"></select>
+            <button class="btn bo bsm" onclick="catAssignRecips()">Recipients isme daalo</button>
+          </div>
         </div>
       </div>
       <div class="card">
@@ -1298,9 +1304,25 @@ function catBcRender() {
     var n = catAll(c.id).length;
     return '<span class="tag ' + (on ? 'tg' : 'tp') + '" style="cursor:pointer;' + (on ? 'font-weight:700;outline:2px solid var(--wrn)' : 'opacity:' + (n ? 1 : .55)) + '" onclick="catToggle(\'' + c.id + '\')">' + (o.d ? '↳ ' : '') + catEsc(c.name) + ' (' + n + ')</span>';
   }).join('') : '<span style="font-size:11px;color:var(--mut)">Categories page me banao</span>';
+  var as = document.getElementById('bcAssign');
+  if (as) {
+    var cv = as.value;
+    as.innerHTML = '<option value="">-- category chuno --</option>' + items.map(function(o) { return '<option value="' + o.c.id + '">' + (o.d ? '↳ ' : '') + catEsc(o.c.name) + '</option>'; }).join('');
+    as.value = cv;
+  }
   var tot = catBcMembers().length;
   var inf = document.getElementById('bcCatInfo');
   if (inf) inf.textContent = Object.keys(bcSel).length ? tot + ' recipients chune' : '';
+}
+function catAssignRecips() {
+  var id = document.getElementById('bcAssign').value;
+  var c = catById(id);
+  if (!c) return alert('Pehle category chuno');
+  if (!recips.length) return alert('Recipients me abhi koi group nahi hai');
+  var n = 0;
+  recips.forEach(function(r) { if (!c.members.find(function(m) { return m.j === r.j; })) { c.members.push({ j: r.j, n: r.n || r.j, t: r.t }); n++; } });
+  catSave(); catRender();
+  alert('"' + c.name + '" me ' + n + ' naye add hue (recipients waise hi rahe)');
 }
 function catToggle(id) { if (bcSel[id]) delete bcSel[id]; else bcSel[id] = 1; catBcRender(); }
 function catBcMembers() {
@@ -1312,7 +1334,6 @@ function catApply(replace) {
   var m = catBcMembers();
   if (!Object.keys(bcSel).length) return alert('Pehle koi category chuno');
   if (!m.length) return alert('In categories me abhi koi member nahi hai');
-  if (replace) recips = [];
   m.forEach(function(x) { if (!recips.find(function(r) { return r.j === x.j; })) recips.push({ j: x.j, t: x.t, n: x.n }); });
   renderR();
   if (typeof renderGroups === 'function') renderGroups();
