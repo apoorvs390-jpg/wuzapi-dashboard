@@ -180,6 +180,7 @@ tr:hover td{background:var(--sur2)}
     <div class="ni act" id="nav-dashboard" onclick="go('dashboard')">Dashboard</div>
     <div class="ni" id="nav-connect" onclick="go('connect')">Connect WA</div>
     <div class="ni" id="nav-broadcast" onclick="go('broadcast')">Broadcast</div>
+    <div class="ni" id="nav-cats" onclick="go('cats');catRender()">Categories</div>
     <div class="ni" id="nav-groups" onclick="go('groups')">Groups</div>
     <div class="ni" id="nav-contacts" onclick="go('contacts')">Contacts</div>
   </nav>
@@ -244,6 +245,16 @@ tr:hover td{background:var(--sur2)}
   <div class="alert">Delay zaroor rakho — WhatsApp ban se bachne ke liye!</div>
   <div class="g2">
     <div>
+      <div class="card">
+        <div class="ct">Category se chuno</div>
+        <div id="bcCats" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+        <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn bg bsm" onclick="catApply(false)">Recipients me jodo</button>
+          <button class="btn bo bsm" onclick="catApply(true)">Sirf inhe rakho</button>
+          <button class="btn bo bsm" onclick="bcSel={};catBcRender()">Clear</button>
+          <span id="bcCatInfo" style="font-size:12px;color:var(--mut)"></span>
+        </div>
+      </div>
       <div class="card">
         <div class="ct">Recipients</div>
         <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
@@ -322,6 +333,35 @@ tr:hover td{background:var(--sur2)}
         </div>
         <div class="log" id="bcLog" style="display:none"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec" id="sec-cats">
+  <div class="pt">Categories</div>
+  <div class="ps">Groups/contacts ko category me baant lo, phir Broadcast me ek click me chuno</div>
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="ct">Nayi Category</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <input id="catNew" placeholder="Category ka naam" style="flex:1;min-width:140px" onkeydown="if(event.key=='Enter')catAdd()">
+          <select id="catParent" style="width:150px"><option value="">(Main category)</option></select>
+          <button class="btn bg bsm" onclick="catAdd()">+ Add</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">Saari Categories</div>
+        <div id="catList"></div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn bo bsm" onclick="catExport()">Backup (download)</button>
+          <button class="btn bo bsm" onclick="document.getElementById('catImp').click()">Restore</button>
+          <input type="file" id="catImp" accept=".json" style="display:none" onchange="catImport(this)">
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" id="catDetail"><div class="ct">Category</div><div style="font-size:13px;color:var(--mut)">Left se ek category chuno</div></div>
     </div>
   </div>
 </div>
@@ -1095,6 +1135,202 @@ async function doAddMem() {
   renderAddMemSel();
 }
 
+
+/* ===== CATEGORIES (additive; sending code untouched) ===== */
+var CAT_KEY = 'wuzapi_cats';
+var cats = [];
+var catSel = null;
+var bcSel = {};
+var catSrc = 'g';
+var DEFAULT_CATS = ['विद्यार्थी','शोधार्थी','प्राध्यापक','विज्ञान','साहित्य','कला क्षेत्र','पत्रकार','सम्पादक','प्रचारक','कार्य श्रेणी','सम्भाग कार्यकारणी','विविध संगठन','अधिवक्ता','मजदूर संगठन','विद्यार्थी संगठन','हिन्दू संगठन','व्यवसाय','सरकारी सेवा','अधिकारी','मातृशक्ति','पूर्व सैनिक','स्तम्भ लेखन','चिकित्सक','धर्म क्षेत्र','NGO','Driver','खिलाड़ी','छोटे व्यवसाय'];
+var DEFAULT_SUBS = { 'चिकित्सक': ['Allopathy','Homeopathy','Ayurvedic'] };
+
+function catEsc(t) { return String(t).replace(/[&<>"]/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function catId() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function catSave() { try { localStorage.setItem(CAT_KEY, JSON.stringify(cats)); } catch (e) {} }
+function catLoad() {
+  try {
+    var s = localStorage.getItem(CAT_KEY);
+    if (s) { var p = JSON.parse(s); if (Array.isArray(p)) { cats = p; return; } }
+  } catch (e) {}
+  cats = [];
+  DEFAULT_CATS.forEach(function(n) {
+    var id = catId();
+    cats.push({ id: id, name: n, parent: '', members: [] });
+    (DEFAULT_SUBS[n] || []).forEach(function(sn) { cats.push({ id: catId(), name: sn, parent: id, members: [] }); });
+  });
+  catSave();
+}
+function catById(id) { return cats.find(function(c) { return c.id === id; }); }
+function catKids(id) { return cats.filter(function(c) { return c.parent === id; }); }
+function catOrdered() {
+  var out = [];
+  cats.filter(function(c) { return !c.parent; }).forEach(function(c) {
+    out.push({ c: c, d: 0 });
+    catKids(c.id).forEach(function(k) { out.push({ c: k, d: 1 }); });
+  });
+  return out;
+}
+function catAll(id) {
+  var c = catById(id); if (!c) return [];
+  var seen = {}, out = [];
+  var list = [c].concat(catKids(id));
+  list.forEach(function(x) { x.members.forEach(function(m) { if (!seen[m.j]) { seen[m.j] = 1; out.push(m); } }); });
+  return out;
+}
+function catAdd() {
+  var n = document.getElementById('catNew').value.trim();
+  if (!n) return;
+  var par = document.getElementById('catParent').value;
+  if (cats.find(function(c) { return c.name === n && c.parent === par; })) return alert('Ye category pehle se hai');
+  var id = catId();
+  cats.push({ id: id, name: n, parent: par, members: [] });
+  document.getElementById('catNew').value = '';
+  catSave(); catSel = id; catRender();
+}
+function catPick(id) { catSel = id; catRender(); }
+function catRename() {
+  var c = catById(catSel); if (!c) return;
+  var n = document.getElementById('catRen').value.trim();
+  if (!n) return;
+  c.name = n; catSave(); catRender();
+}
+function catDel() {
+  var c = catById(catSel); if (!c) return;
+  var kids = catKids(c.id);
+  if (!confirm('"' + c.name + '"' + (kids.length ? ' aur uski ' + kids.length + ' sub-category' : '') + ' hata dein? (Groups delete nahi honge, sirf category)')) return;
+  cats = cats.filter(function(x) { return x.id !== c.id && x.parent !== c.id; });
+  delete bcSel[c.id]; kids.forEach(function(k) { delete bcSel[k.id]; });
+  catSel = null; catSave(); catRender();
+}
+function catAddMember(j, n, t) {
+  var c = catById(catSel); if (!c) return;
+  if (!c.members.find(function(m) { return m.j === j; })) c.members.push({ j: j, n: n, t: t });
+}
+function catSetSrc(s) { catSrc = s; if (s === 'c' && !allContacts.length) { loadContacts().then(catRender); } catRender(); }
+function catPickAdd(i) {
+  var list = catSrc === 'g' ? allGroups : allContacts;
+  var x = list[i]; if (!x) return;
+  if (catSrc === 'g') catAddMember(x.JID || x.Id || '', x.Name || x.GroupName || x.Subject || 'Unnamed', 'group');
+  else catAddMember(x.jid, x.name || x.jid, 'personal');
+  catSave(); catRender();
+}
+function catPickAddShown() {
+  var q = (document.getElementById('catQ').value || '').toLowerCase();
+  var list = catSrc === 'g' ? allGroups : allContacts;
+  var n = 0;
+  list.forEach(function(x) {
+    var j = catSrc === 'g' ? (x.JID || x.Id || '') : x.jid;
+    var nm = catSrc === 'g' ? (x.Name || x.GroupName || x.Subject || 'Unnamed') : (x.name || x.jid);
+    if (q && nm.toLowerCase().indexOf(q) === -1) return;
+    var c = catById(catSel);
+    if (c && !c.members.find(function(m) { return m.j === j; })) { catAddMember(j, nm, catSrc === 'g' ? 'group' : 'personal'); n++; }
+  });
+  catSave(); catRender();
+  alert(n + ' add hue');
+}
+function catFromRecips() {
+  var c = catById(catSel); if (!c) return;
+  var n = 0;
+  recips.forEach(function(r) { if (!c.members.find(function(m) { return m.j === r.j; })) { c.members.push({ j: r.j, n: r.n || r.j, t: r.t }); n++; } });
+  catSave(); catRender();
+  alert(n + ' recipients is category me add hue');
+}
+function catRemMember(i) {
+  var c = catById(catSel); if (!c) return;
+  c.members.splice(i, 1); catSave(); catRender();
+}
+function catRender() {
+  // parent dropdown
+  var ps = document.getElementById('catParent');
+  if (ps) {
+    var cur = ps.value;
+    ps.innerHTML = '<option value="">(Main category)</option>' + cats.filter(function(c) { return !c.parent; }).map(function(c) { return '<option value="' + c.id + '">' + catEsc(c.name) + ' ke andar</option>'; }).join('');
+    ps.value = cur;
+  }
+  // left list
+  var L = document.getElementById('catList');
+  if (L) {
+    L.innerHTML = catOrdered().map(function(o) {
+      var c = o.c, act = c.id === catSel;
+      var cnt = c.members.length, tot = catAll(c.id).length;
+      return '<div class="crow" style="cursor:pointer;padding-left:' + (o.d ? 22 : 6) + 'px;' + (act ? 'background:var(--sur2);' : '') + '" onclick="catPick(\'' + c.id + '\')">' +
+        '<span style="font-size:13px;' + (act ? 'font-weight:700;' : '') + '">' + (o.d ? '↳ ' : '') + catEsc(c.name) + '</span>' +
+        '<span style="font-size:11px;color:var(--mut)">' + (o.d ? cnt : (tot !== cnt ? cnt + ' (' + tot + ')' : cnt)) + '</span></div>';
+    }).join('') || '<div style="font-size:12px;color:var(--mut)">Koi category nahi</div>';
+  }
+  // detail
+  var D = document.getElementById('catDetail');
+  var c = catById(catSel);
+  if (D) {
+    if (!c) { D.innerHTML = '<div class="ct">Category</div><div style="font-size:13px;color:var(--mut)">Left se ek category chuno</div>'; }
+    else {
+      var q = (document.getElementById('catQ') || {}).value || '';
+      var list = catSrc === 'g' ? allGroups : allContacts;
+      var rows = '';
+      list.forEach(function(x, i) {
+        var j = catSrc === 'g' ? (x.JID || x.Id || '') : x.jid;
+        var nm = catSrc === 'g' ? (x.Name || x.GroupName || x.Subject || 'Unnamed') : (x.name || x.jid);
+        if (q && nm.toLowerCase().indexOf(q.toLowerCase()) === -1) return;
+        var has = !!c.members.find(function(m) { return m.j === j; });
+        rows += '<div class="crow"><span style="font-size:12px">' + catEsc(nm) + '</span>' + (has ? '<span class="ok">Added</span>' : '<button class="btn bo bsm" onclick="catPickAdd(' + i + ')">+ Add</button>') + '</div>';
+      });
+      if (!rows) rows = '<div style="font-size:12px;color:var(--mut);padding:8px 0">' + (list.length ? 'Kuch nahi mila' : (catSrc === 'g' ? 'Groups load nahi hue.' : 'Contacts load nahi hue.')) + '</div>';
+      var mem = c.members.length ? c.members.map(function(m, i) { return '<span class="tag ' + (m.t === 'group' ? 'tg' : 'tp') + '">' + catEsc((m.n || m.j).substring(0, 22)) + '<span class="tx" onclick="catRemMember(' + i + ')">x</span></span>'; }).join('') : '<span style="font-size:11px;color:var(--mut)">Abhi koi member nahi</span>';
+      D.innerHTML = '<div class="ct">' + catEsc(c.name) + '</div>' +
+        '<div style="display:flex;gap:5px;margin-bottom:8px"><input id="catRen" value="' + catEsc(c.name) + '" style="flex:1"><button class="btn bo bsm" onclick="catRename()">Rename</button><button class="btn bo bsm" style="color:var(--dan)" onclick="catDel()">Delete</button></div>' +
+        '<span class="lbl">Is category ke members (' + c.members.length + ')</span><div class="rbox">' + mem + '</div>' +
+        '<div style="display:flex;gap:4px;margin:10px 0 6px;flex-wrap:wrap"><button class="btn bsm ' + (catSrc === 'g' ? 'bg' : 'bo') + '" onclick="catSetSrc(\'g\')">Groups</button><button class="btn bsm ' + (catSrc === 'c' ? 'bg' : 'bo') + '" onclick="catSetSrc(\'c\')">Contacts</button>' +
+        (catSrc === 'g' && !allGroups.length ? '<button class="btn bo bsm" onclick="loadGroups().then(catRender)">Groups load karo</button>' : '') +
+        '<button class="btn bo bsm" onclick="catFromRecips()">Broadcast recipients isme daalo</button></div>' +
+        '<div style="display:flex;gap:5px;margin-bottom:6px"><input id="catQ" placeholder="Search..." value="' + catEsc(q) + '" oninput="catRender();var e=document.getElementById(\'catQ\');e.focus();e.setSelectionRange(e.value.length,e.value.length)" style="flex:1"><button class="btn bo bsm" onclick="catPickAddShown()">Dikhe hue sab add</button></div>' +
+        '<div style="max-height:320px;overflow-y:auto">' + rows + '</div>';
+    }
+  }
+  catBcRender();
+}
+function catBcRender() {
+  var B = document.getElementById('bcCats');
+  if (!B) return;
+  var items = catOrdered();
+  B.innerHTML = items.length ? items.map(function(o) {
+    var c = o.c, on = !!bcSel[c.id];
+    var n = catAll(c.id).length;
+    return '<span class="tag ' + (on ? 'tg' : 'tp') + '" style="cursor:pointer;' + (on ? 'font-weight:700;outline:2px solid var(--wrn)' : 'opacity:' + (n ? 1 : .55)) + '" onclick="catToggle(\'' + c.id + '\')">' + (o.d ? '↳ ' : '') + catEsc(c.name) + ' (' + n + ')</span>';
+  }).join('') : '<span style="font-size:11px;color:var(--mut)">Categories page me banao</span>';
+  var tot = catBcMembers().length;
+  var inf = document.getElementById('bcCatInfo');
+  if (inf) inf.textContent = Object.keys(bcSel).length ? tot + ' recipients chune' : '';
+}
+function catToggle(id) { if (bcSel[id]) delete bcSel[id]; else bcSel[id] = 1; catBcRender(); }
+function catBcMembers() {
+  var seen = {}, out = [];
+  Object.keys(bcSel).forEach(function(id) { catAll(id).forEach(function(m) { if (!seen[m.j]) { seen[m.j] = 1; out.push(m); } }); });
+  return out;
+}
+function catApply(replace) {
+  var m = catBcMembers();
+  if (!Object.keys(bcSel).length) return alert('Pehle koi category chuno');
+  if (!m.length) return alert('In categories me abhi koi member nahi hai');
+  if (replace) recips = [];
+  m.forEach(function(x) { if (!recips.find(function(r) { return r.j === x.j; })) recips.push({ j: x.j, t: x.t, n: x.n }); });
+  renderR();
+  if (typeof renderGroups === 'function') renderGroups();
+}
+function catExport() {
+  var b = new Blob([JSON.stringify(cats, null, 1)], { type: 'application/json' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'categories_backup.json'; a.click();
+}
+function catImport(inp) {
+  var f = inp.files[0]; if (!f) return;
+  var r = new FileReader();
+  r.onload = function() {
+    try { var p = JSON.parse(r.result); if (!Array.isArray(p)) throw 0; cats = p; catSave(); catSel = null; bcSel = {}; catRender(); alert('Restore ho gaya'); }
+    catch (e) { alert('File sahi nahi hai'); }
+  };
+  r.readAsText(f); inp.value = '';
+}
+try { catLoad(); catRender(); } catch (e) { console.error('categories init', e); }
 </script>
 
 <!-- Add Members Modal -->
