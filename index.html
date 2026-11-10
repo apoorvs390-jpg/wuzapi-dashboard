@@ -246,25 +246,7 @@ tr:hover td{background:var(--sur2)}
   <div class="g2">
     <div>
       <div class="card">
-        <div class="ct">Broadcast me kaise jodna hai?</div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <button class="btn bsm bg" id="bcModeBtnC" onclick="bcMode('c')">Categories se</button>
-          <button class="btn bsm bo" id="bcModeBtnG" onclick="bcMode('g')">Groups seedhe</button>
-        </div>
-        <div id="bcModeG" style="display:none">
-          <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
-            <input id="bcGQ" placeholder="Group search..." oninput="bcGRender()" style="flex:1;min-width:120px">
-            <button class="btn bo bsm" onclick="loadGroups().then(bcGRender)">Refresh Groups</button>
-          </div>
-          <div id="bcGList" style="max-height:260px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px;padding:4px"></div>
-          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
-            <button class="btn bg bsm" onclick="bcGAdd()">Chune hue Recipients me jodo</button>
-            <button class="btn bo bsm" onclick="bcGAll()">Dikhe hue sab chuno</button>
-            <button class="btn bo bsm" onclick="bcGSel={};bcGRender()">Clear</button>
-            <span id="bcGInfo" style="font-size:12px;color:var(--mut)"></span>
-          </div>
-        </div>
-        <div id="bcModeC">
+        <div class="ct">Category se chuno</div>
         <div id="bcCats" style="display:flex;flex-wrap:wrap;gap:5px"></div>
         <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
           <button class="btn bg bsm" onclick="catApply(false)">Recipients me jodo</button>
@@ -276,6 +258,21 @@ tr:hover td{background:var(--sur2)}
           <div style="display:flex;gap:5px;flex-wrap:wrap">
             <select id="bcAssign" style="flex:1;min-width:140px"></select>
             <button class="btn bo bsm" onclick="catAssignRecips()">Recipients isme daalo</button>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:2px solid var(--bdr)">
+          <div class="ct">Groups seedhe chuno (category ke bina)</div>
+        <div id="bcModeG">
+          <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
+            <input id="bcGQ" placeholder="Group search..." oninput="bcGRender()" style="flex:1;min-width:120px">
+            <button class="btn bo bsm" onclick="loadGroups().then(bcGRender)">Refresh Groups</button>
+          </div>
+          <div id="bcGList" style="max-height:260px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px;padding:4px"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn bg bsm" onclick="bcGAdd()">Chune hue Recipients me jodo</button>
+            <button class="btn bo bsm" onclick="bcGAll()">Dikhe hue sab chuno</button>
+            <button class="btn bo bsm" onclick="bcGSel={};bcGRender()">Clear</button>
+            <span id="bcGInfo" style="font-size:12px;color:var(--mut)"></span>
           </div>
         </div>
         </div>
@@ -1374,7 +1371,7 @@ function catImport(inp) {
 
 /* ---- Broadcast: Categories se / Groups seedhe (additive only) ---- */
 var bcGSel = {};
-function bcMode(m) {
+function bcMode(m) { if (!document.getElementById('bcModeBtnC')) { if (!allGroups.length) loadGroups().then(bcGRender); else bcGRender(); return; }
   document.getElementById('bcModeC').style.display = m === 'c' ? '' : 'none';
   document.getElementById('bcModeG').style.display = m === 'g' ? '' : 'none';
   document.getElementById('bcModeBtnC').className = 'btn bsm ' + (m === 'c' ? 'bg' : 'bo');
@@ -1431,6 +1428,9 @@ function bcGAdd() {
   bcGRender();
 }
 try { catLoad(); catRender(); } catch (e) { console.error('categories init', e); }
+try { var _nb = document.getElementById('nav-broadcast') || document.querySelector('.ni[onclick*="broadcast"]');
+  if (_nb) _nb.addEventListener('click', function() { try { bcGRender(); if (!allGroups.length) loadGroups().then(bcGRender); } catch (e) {} }); } catch (e) {}
+try { bcGRender(); } catch (e) {}
 </script>
 
 <!-- Add Members Modal -->
