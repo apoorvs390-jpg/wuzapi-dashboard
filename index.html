@@ -246,7 +246,25 @@ tr:hover td{background:var(--sur2)}
   <div class="g2">
     <div>
       <div class="card">
-        <div class="ct">Category se chuno</div>
+        <div class="ct">Broadcast me kaise jodna hai?</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="btn bsm bg" id="bcModeBtnC" onclick="bcMode('c')">Categories se</button>
+          <button class="btn bsm bo" id="bcModeBtnG" onclick="bcMode('g')">Groups seedhe</button>
+        </div>
+        <div id="bcModeG" style="display:none">
+          <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
+            <input id="bcGQ" placeholder="Group search..." oninput="bcGRender()" style="flex:1;min-width:120px">
+            <button class="btn bo bsm" onclick="loadGroups().then(bcGRender)">Refresh Groups</button>
+          </div>
+          <div id="bcGList" style="max-height:260px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px;padding:4px"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn bg bsm" onclick="bcGAdd()">Chune hue Recipients me jodo</button>
+            <button class="btn bo bsm" onclick="bcGAll()">Dikhe hue sab chuno</button>
+            <button class="btn bo bsm" onclick="bcGSel={};bcGRender()">Clear</button>
+            <span id="bcGInfo" style="font-size:12px;color:var(--mut)"></span>
+          </div>
+        </div>
+        <div id="bcModeC">
         <div id="bcCats" style="display:flex;flex-wrap:wrap;gap:5px"></div>
         <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
           <button class="btn bg bsm" onclick="catApply(false)">Recipients me jodo</button>
@@ -259,6 +277,7 @@ tr:hover td{background:var(--sur2)}
             <select id="bcAssign" style="flex:1;min-width:140px"></select>
             <button class="btn bo bsm" onclick="catAssignRecips()">Recipients isme daalo</button>
           </div>
+        </div>
         </div>
       </div>
       <div class="card">
@@ -846,6 +865,7 @@ function renderGroups() {
     html += '<tr><td><b>' + name + '</b></td><td style="font-size:11px;color:var(--mut)">' + jid + '</td><td>' + btn + memBtn + '</td></tr>';
   });
   document.getElementById('grpTbl').innerHTML = html;
+  if (typeof bcGRender === 'function') { try { bcGRender(); } catch (e) {} }
 }
 
 function addGrp(idx) {
@@ -1350,6 +1370,65 @@ function catImport(inp) {
     catch (e) { alert('File sahi nahi hai'); }
   };
   r.readAsText(f); inp.value = '';
+}
+
+/* ---- Broadcast: Categories se / Groups seedhe (additive only) ---- */
+var bcGSel = {};
+function bcMode(m) {
+  document.getElementById('bcModeC').style.display = m === 'c' ? '' : 'none';
+  document.getElementById('bcModeG').style.display = m === 'g' ? '' : 'none';
+  document.getElementById('bcModeBtnC').className = 'btn bsm ' + (m === 'c' ? 'bg' : 'bo');
+  document.getElementById('bcModeBtnG').className = 'btn bsm ' + (m === 'g' ? 'bg' : 'bo');
+  if (m === 'g') { if (!allGroups.length) loadGroups().then(bcGRender); else bcGRender(); }
+}
+function bcGName(g) { return g.Name || g.GroupName || g.Subject || 'Unnamed'; }
+function bcGJid(g) { return g.JID || g.Id || ''; }
+function bcGShown() {
+  var q = (document.getElementById('bcGQ').value || '').toLowerCase();
+  var out = [];
+  allGroups.forEach(function(g, i) { if (!q || bcGName(g).toLowerCase().indexOf(q) >= 0) out.push(i); });
+  return out;
+}
+function bcGRender() {
+  var L = document.getElementById('bcGList');
+  if (!L) return;
+  if (!allGroups.length) { L.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--mut)">Groups load nahi hue — Refresh Groups dabao</div>'; return; }
+  var idxs = bcGShown();
+  L.innerHTML = idxs.length ? idxs.map(function(i) {
+    var g = allGroups[i], jid = bcGJid(g);
+    var added = !!recips.find(function(r) { return r.j === jid; });
+    return '<label style="display:flex;gap:8px;align-items:center;padding:4px 6px;font-size:13px;cursor:' + (added ? 'default' : 'pointer') + '">' +
+      '<input type="checkbox" ' + (added ? 'disabled checked' : (bcGSel[jid] ? 'checked' : '')) + ' onchange="bcGTog(' + i + ')">' +
+      '<span style="flex:1">' + catEsc(bcGName(g)) + '</span>' + (added ? '<span class="ok" style="font-size:11px">Added</span>' : '') + '</label>';
+  }).join('') : '<div style="padding:10px;font-size:12px;color:var(--mut)">Koi group nahi mila</div>';
+  var n = Object.keys(bcGSel).length;
+  var inf = document.getElementById('bcGInfo');
+  if (inf) inf.textContent = n ? n + ' chune' : '';
+}
+function bcGTog(i) {
+  var jid = bcGJid(allGroups[i]);
+  if (bcGSel[jid]) delete bcGSel[jid]; else bcGSel[jid] = 1;
+  var n = Object.keys(bcGSel).length, inf = document.getElementById('bcGInfo');
+  if (inf) inf.textContent = n ? n + ' chune' : '';
+}
+function bcGAll() {
+  bcGShown().forEach(function(i) {
+    var jid = bcGJid(allGroups[i]);
+    if (!recips.find(function(r) { return r.j === jid; })) bcGSel[jid] = 1;
+  });
+  bcGRender();
+}
+function bcGAdd() {
+  var n = 0;
+  allGroups.forEach(function(g) {
+    var jid = bcGJid(g);
+    if (bcGSel[jid] && !recips.find(function(r) { return r.j === jid; })) { recips.push({ j: jid, t: 'group', n: bcGName(g) }); n++; }
+  });
+  if (!Object.keys(bcGSel).length) return alert('Pehle koi group chuno');
+  bcGSel = {};
+  renderR();
+  if (typeof renderGroups === 'function') renderGroups();
+  bcGRender();
 }
 try { catLoad(); catRender(); } catch (e) { console.error('categories init', e); }
 </script>
