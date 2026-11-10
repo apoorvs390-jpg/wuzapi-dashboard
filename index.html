@@ -267,7 +267,7 @@ tr:hover td{background:var(--sur2)}
             <input id="bcGQ" placeholder="Group search..." oninput="bcGRender()" style="flex:1;min-width:120px">
             <button class="btn bo bsm" onclick="loadGroups().then(bcGRender)">Refresh Groups</button>
           </div>
-          <div id="bcGList" style="max-height:260px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px;padding:4px"></div>
+          <div id="bcGList" style="display:flex;flex-wrap:wrap;gap:5px;max-height:260px;overflow-y:auto"></div>
           <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
             <button class="btn bg bsm" onclick="bcGAdd()">Chune hue Recipients me jodo</button>
             <button class="btn bo bsm" onclick="bcGAll()">Dikhe hue sab chuno</button>
@@ -1389,15 +1389,15 @@ function bcGShown() {
 function bcGRender() {
   var L = document.getElementById('bcGList');
   if (!L) return;
-  if (!allGroups.length) { L.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--mut)">Groups load nahi hue — Refresh Groups dabao</div>'; return; }
+  if (!allGroups.length) { L.innerHTML = '<span style="font-size:11px;color:var(--mut)">Groups load nahi hue — Refresh Groups dabao</span>'; return; }
   var idxs = bcGShown();
   L.innerHTML = idxs.length ? idxs.map(function(i) {
     var g = allGroups[i], jid = bcGJid(g);
     var added = !!recips.find(function(r) { return r.j === jid; });
-    return '<label style="display:flex;gap:8px;align-items:center;padding:4px 6px;font-size:13px;cursor:' + (added ? 'default' : 'pointer') + '">' +
-      '<input type="checkbox" ' + (added ? 'disabled checked' : (bcGSel[jid] ? 'checked' : '')) + ' onchange="bcGTog(' + i + ')">' +
-      '<span style="flex:1">' + catEsc(bcGName(g)) + '</span>' + (added ? '<span class="ok" style="font-size:11px">Added</span>' : '') + '</label>';
-  }).join('') : '<div style="padding:10px;font-size:12px;color:var(--mut)">Koi group nahi mila</div>';
+    var on = !!bcGSel[jid];
+    if (added) return '<span class="tag tg" style="opacity:.5;cursor:default" title="Recipients me pehle se hai">✓ ' + catEsc(bcGName(g)) + '</span>';
+    return '<span class="tag ' + (on ? 'tg' : 'tp') + '" style="cursor:pointer;' + (on ? 'font-weight:700;outline:2px solid var(--wrn)' : '') + '" onclick="bcGTog(' + i + ')">' + catEsc(bcGName(g)) + '</span>';
+  }).join('') : '<span style="font-size:11px;color:var(--mut)">Koi group nahi mila</span>';
   var n = Object.keys(bcGSel).length;
   var inf = document.getElementById('bcGInfo');
   if (inf) inf.textContent = n ? n + ' chune' : '';
@@ -1405,8 +1405,7 @@ function bcGRender() {
 function bcGTog(i) {
   var jid = bcGJid(allGroups[i]);
   if (bcGSel[jid]) delete bcGSel[jid]; else bcGSel[jid] = 1;
-  var n = Object.keys(bcGSel).length, inf = document.getElementById('bcGInfo');
-  if (inf) inf.textContent = n ? n + ' chune' : '';
+  bcGRender();
 }
 function bcGAll() {
   bcGShown().forEach(function(i) {
