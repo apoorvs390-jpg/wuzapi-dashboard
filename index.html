@@ -1402,8 +1402,8 @@ function bcGRender() {
     var g = allGroups[i], jid = bcGJid(g);
     var added = !!recips.find(function(r) { return r.j === jid; });
     var on = !!bcGSel[jid];
-    if (added) { var d = !!bcGDel[jid]; return '<span class="tag tg" style="cursor:pointer;' + (d ? 'opacity:1;font-weight:700;outline:2px solid var(--dan);background:rgba(239,68,68,.18)' : 'opacity:.7') + '" title="Hatane ke liye chuno" onclick="bcGDelTog(' + i + ')">' + (d ? '☑ ' : '✓ ') + catEsc(bcGName(g)) + '</span>'; }
-    return '<span class="tag ' + (on ? 'tg' : 'tp') + '" style="cursor:pointer;' + (on ? 'font-weight:700;outline:2px solid var(--wrn)' : '') + '" onclick="bcGTog(' + i + ')">' + catEsc(bcGName(g)) + '</span>';
+    if (added) { var d = !!bcGDel[jid]; return '<span class="tag tg" style="cursor:pointer;' + (d ? 'opacity:1;font-weight:700;outline:2px solid var(--dan);background:rgba(239,68,68,.18)' : 'opacity:.7') + '" title="Hatane ke liye chuno" onclick="bcGDelTog(' + i + ')">' + (d ? '🗑 ' : '✓ ') + catEsc(bcGName(g)) + '</span>'; }
+    return '<span class="tag ' + (on ? 'tg' : 'tp') + '" style="cursor:pointer;' + (on ? 'font-weight:700;outline:2px solid var(--wrn);background:rgba(245,158,11,.22)' : '') + '" onclick="bcGTog(' + i + ')">' + (on ? '☑ ' : '') + catEsc(bcGName(g)) + '</span>';
   }).join('') : '<span style="font-size:11px;color:var(--mut)">Koi group nahi mila</span>';
   var n = Object.keys(bcGSel).length;
   var inf = document.getElementById('bcGInfo');
