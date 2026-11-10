@@ -272,6 +272,7 @@ tr:hover td{background:var(--sur2)}
             <button class="btn bg bsm" onclick="bcGAdd()">Chune hue Recipients me jodo</button>
             <button class="btn bo bsm" onclick="bcGAll()">Dikhe hue sab chuno</button>
             <button class="btn bo bsm" onclick="bcGSel={};bcGRender()">Clear</button>
+            <button class="btn bo bsm" onclick="bcGRemoveShown()" style="color:var(--dan)">Jude hue hatao</button>
             <span id="bcGInfo" style="font-size:12px;color:var(--mut)"></span>
           </div>
         </div>
@@ -1395,13 +1396,36 @@ function bcGRender() {
     var g = allGroups[i], jid = bcGJid(g);
     var added = !!recips.find(function(r) { return r.j === jid; });
     var on = !!bcGSel[jid];
-    if (added) return '<span class="tag tg" style="opacity:.5;cursor:default" title="Recipients me pehle se hai">✓ ' + catEsc(bcGName(g)) + '</span>';
+    if (added) return '<span class="tag tg" style="opacity:.75;cursor:pointer" title="Click karke broadcast se hatao" onclick="bcGRemove(' + i + ')">✓ ' + catEsc(bcGName(g)) + ' <b style="margin-left:3px">✕</b></span>';
     return '<span class="tag ' + (on ? 'tg' : 'tp') + '" style="cursor:pointer;' + (on ? 'font-weight:700;outline:2px solid var(--wrn)' : '') + '" onclick="bcGTog(' + i + ')">' + catEsc(bcGName(g)) + '</span>';
   }).join('') : '<span style="font-size:11px;color:var(--mut)">Koi group nahi mila</span>';
   var n = Object.keys(bcGSel).length;
   var inf = document.getElementById('bcGInfo');
   if (inf) inf.textContent = n ? n + ' chune' : '';
 }
+function bcGRemove(i) {
+  var jid = bcGJid(allGroups[i]);
+  var k = recips.findIndex(function(r) { return r.j === jid; });
+  if (k >= 0) { recips.splice(k, 1); renderR(); }
+  if (typeof renderGroups === 'function') renderGroups();
+  bcGRender();
+}
+function bcGRemoveShown() {
+  var jids = bcGShown().map(function(i) { return bcGJid(allGroups[i]); });
+  var n = recips.filter(function(r) { return jids.indexOf(r.j) >= 0; }).length;
+  if (!n) return alert('Dikhe hue groups me se koi Recipients me nahi hai');
+  if (!confirm(n + ' group(s) broadcast se hatane hain? (sirf ye dikhe hue groups, baaki recipients waise hi rahenge)')) return;
+  recips = recips.filter(function(r) { return jids.indexOf(r.j) < 0; });
+  renderR();
+  if (typeof renderGroups === 'function') renderGroups();
+  bcGRender();
+}
+// keep the chips in sync when recipients are removed from the Recipients box itself
+(function() {
+  var _rm = rmR, _clr = clrR;
+  rmR = function(i) { _rm(i); try { bcGRender(); } catch (e) {} };
+  clrR = function() { _clr(); try { bcGRender(); } catch (e) {} };
+})();
 function bcGTog(i) {
   var jid = bcGJid(allGroups[i]);
   if (bcGSel[jid]) delete bcGSel[jid]; else bcGSel[jid] = 1;
