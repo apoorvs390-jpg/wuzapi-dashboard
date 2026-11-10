@@ -181,6 +181,7 @@ tr:hover td{background:var(--sur2)}
     <div class="ni" id="nav-connect" onclick="go('connect')">Connect WA</div>
     <div class="ni" id="nav-broadcast" onclick="go('broadcast')">Broadcast</div>
     <div class="ni" id="nav-cats" onclick="go('cats');catRender()">Categories</div>
+    <div class="ni" id="nav-dgroups" onclick="go('dgroups');bcGRender();if(!allGroups.length)loadGroups().then(bcGRender)">Direct Groups</div>
     <div class="ni" id="nav-groups" onclick="go('groups')">Groups</div>
     <div class="ni" id="nav-contacts" onclick="go('contacts')">Contacts</div>
   </nav>
@@ -245,31 +246,6 @@ tr:hover td{background:var(--sur2)}
   <div class="alert">Delay zaroor rakho — WhatsApp ban se bachne ke liye!</div>
   <div class="g2">
     <div>
-      <div class="card">
-        <div>
-          <div class="ct">Groups seedhe chuno</div>
-        <div id="bcModeG">
-          <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
-            <input id="bcGQ" placeholder="Group search..." oninput="bcGRender()" style="flex:1;min-width:120px">
-            <button class="btn bo bsm" onclick="loadGroups().then(bcGRender)">Refresh Groups</button>
-          </div>
-          <div id="bcGList" style="display:flex;flex-wrap:wrap;gap:5px;max-height:260px;overflow-y:auto"></div>
-          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
-            <button class="btn bg bsm" onclick="bcGAdd()">Chune hue Recipients me jodo</button>
-            <button class="btn bo bsm" onclick="bcGAll()">Dikhe hue sab chuno</button>
-            <button class="btn bo bsm" onclick="bcGSel={};bcGRender()">Clear</button>
-            <span id="bcGInfo" style="font-size:12px;color:var(--mut)"></span>
-          </div>
-          <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bdr);align-items:center;flex-wrap:wrap">
-            <span style="font-size:11px;color:var(--mut)">Broadcast se hatane ke liye ✓ wale chips chuno:</span>
-            <button class="btn bo bsm" onclick="bcGDelAll()">Jude hue sab chuno</button>
-            <button class="btn bo bsm" onclick="bcGDelRun()" style="color:var(--dan)">Chune hue hatao</button>
-            <button class="btn bo bsm" onclick="bcGDel={};bcGRender()">Clear</button>
-            <span id="bcGDelInfo" style="font-size:12px;color:var(--dan)"></span>
-          </div>
-        </div>
-        </div>
-      </div>
       <div class="card">
         <div class="ct">Recipients</div>
         <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
@@ -349,6 +325,38 @@ tr:hover td{background:var(--sur2)}
         <div class="log" id="bcLog" style="display:none"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="sec" id="sec-dgroups">
+  <div class="pt">Direct Groups</div>
+  <div class="ps">Category ke bina groups seedhe Broadcast me jodo ya hatao <span style="margin-left:8px;color:var(--acc)">Broadcast me abhi: <b id="bcGTot">0</b></span></div>
+  <div style="max-width:900px">
+      <div class="card">
+        <div>
+          <div class="ct">Groups</div>
+        <div id="bcModeG">
+          <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
+            <input id="bcGQ" placeholder="Group search..." oninput="bcGRender()" style="flex:1;min-width:120px">
+            <button class="btn bo bsm" onclick="loadGroups().then(bcGRender)">Refresh Groups</button>
+          </div>
+          <div id="bcGList" style="display:flex;flex-wrap:wrap;gap:5px;max-height:260px;overflow-y:auto"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn bg bsm" onclick="bcGAdd()">Chune hue Recipients me jodo</button>
+            <button class="btn bo bsm" onclick="bcGAll()">Dikhe hue sab chuno</button>
+            <button class="btn bo bsm" onclick="bcGSel={};bcGRender()">Clear</button>
+            <span id="bcGInfo" style="font-size:12px;color:var(--mut)"></span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bdr);align-items:center;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--mut)">Broadcast se hatane ke liye ✓ wale chips chuno:</span>
+            <button class="btn bo bsm" onclick="bcGDelAll()">Jude hue sab chuno</button>
+            <button class="btn bo bsm" onclick="bcGDelRun()" style="color:var(--dan)">Chune hue hatao</button>
+            <button class="btn bo bsm" onclick="bcGDel={};bcGRender()">Clear</button>
+            <span id="bcGDelInfo" style="font-size:12px;color:var(--dan)"></span>
+          </div>
+        </div>
+        </div>
+      </div>
   </div>
 </div>
 
@@ -1410,6 +1418,7 @@ function bcGRender() {
   var n = Object.keys(bcGSel).length;
   var inf = document.getElementById('bcGInfo');
   if (inf) inf.textContent = n ? n + ' chune' : '';
+  var tt = document.getElementById('bcGTot'); if (tt) tt.textContent = recips.length;
   var dn = Object.keys(bcGDel).length, di = document.getElementById('bcGDelInfo');
   if (di) di.textContent = dn ? dn + ' hatane ke liye chune' : '';
 }
@@ -1466,7 +1475,7 @@ function bcGAdd() {
   bcGRender();
 }
 try { catLoad(); catRender(); } catch (e) { console.error('categories init', e); }
-try { var _nb = document.getElementById('nav-broadcast') || document.querySelector('.ni[onclick*="broadcast"]');
+try { var _nb = document.getElementById('nav-dgroups');
   if (_nb) _nb.addEventListener('click', function() { try { bcGRender(); if (!allGroups.length) loadGroups().then(bcGRender); } catch (e) {} }); } catch (e) {}
 try { bcGRender(); } catch (e) {}
 </script>
