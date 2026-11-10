@@ -272,8 +272,14 @@ tr:hover td{background:var(--sur2)}
             <button class="btn bg bsm" onclick="bcGAdd()">Chune hue Recipients me jodo</button>
             <button class="btn bo bsm" onclick="bcGAll()">Dikhe hue sab chuno</button>
             <button class="btn bo bsm" onclick="bcGSel={};bcGRender()">Clear</button>
-            <button class="btn bo bsm" onclick="bcGRemoveShown()" style="color:var(--dan)">Jude hue hatao</button>
             <span id="bcGInfo" style="font-size:12px;color:var(--mut)"></span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bdr);align-items:center;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--mut)">Broadcast se hatane ke liye ✓ wale chips chuno:</span>
+            <button class="btn bo bsm" onclick="bcGDelAll()">Jude hue sab chuno</button>
+            <button class="btn bo bsm" onclick="bcGDelRun()" style="color:var(--dan)">Chune hue hatao</button>
+            <button class="btn bo bsm" onclick="bcGDel={};bcGRender()">Clear</button>
+            <span id="bcGDelInfo" style="font-size:12px;color:var(--dan)"></span>
           </div>
         </div>
         </div>
@@ -1371,7 +1377,7 @@ function catImport(inp) {
 }
 
 /* ---- Broadcast: Categories se / Groups seedhe (additive only) ---- */
-var bcGSel = {};
+var bcGSel = {}, bcGDel = {};
 function bcMode(m) { if (!document.getElementById('bcModeBtnC')) { if (!allGroups.length) loadGroups().then(bcGRender); else bcGRender(); return; }
   document.getElementById('bcModeC').style.display = m === 'c' ? '' : 'none';
   document.getElementById('bcModeG').style.display = m === 'g' ? '' : 'none';
@@ -1396,26 +1402,33 @@ function bcGRender() {
     var g = allGroups[i], jid = bcGJid(g);
     var added = !!recips.find(function(r) { return r.j === jid; });
     var on = !!bcGSel[jid];
-    if (added) return '<span class="tag tg" style="opacity:.75;cursor:pointer" title="Click karke broadcast se hatao" onclick="bcGRemove(' + i + ')">✓ ' + catEsc(bcGName(g)) + ' <b style="margin-left:3px">✕</b></span>';
+    if (added) { var d = !!bcGDel[jid]; return '<span class="tag tg" style="cursor:pointer;' + (d ? 'opacity:1;font-weight:700;outline:2px solid var(--dan);background:rgba(239,68,68,.18)' : 'opacity:.7') + '" title="Hatane ke liye chuno" onclick="bcGDelTog(' + i + ')">' + (d ? '☑ ' : '✓ ') + catEsc(bcGName(g)) + '</span>'; }
     return '<span class="tag ' + (on ? 'tg' : 'tp') + '" style="cursor:pointer;' + (on ? 'font-weight:700;outline:2px solid var(--wrn)' : '') + '" onclick="bcGTog(' + i + ')">' + catEsc(bcGName(g)) + '</span>';
   }).join('') : '<span style="font-size:11px;color:var(--mut)">Koi group nahi mila</span>';
   var n = Object.keys(bcGSel).length;
   var inf = document.getElementById('bcGInfo');
   if (inf) inf.textContent = n ? n + ' chune' : '';
+  var dn = Object.keys(bcGDel).length, di = document.getElementById('bcGDelInfo');
+  if (di) di.textContent = dn ? dn + ' hatane ke liye chune' : '';
 }
-function bcGRemove(i) {
+function bcGDelTog(i) {
   var jid = bcGJid(allGroups[i]);
-  var k = recips.findIndex(function(r) { return r.j === jid; });
-  if (k >= 0) { recips.splice(k, 1); renderR(); }
-  if (typeof renderGroups === 'function') renderGroups();
+  if (bcGDel[jid]) delete bcGDel[jid]; else bcGDel[jid] = 1;
   bcGRender();
 }
-function bcGRemoveShown() {
-  var jids = bcGShown().map(function(i) { return bcGJid(allGroups[i]); });
-  var n = recips.filter(function(r) { return jids.indexOf(r.j) >= 0; }).length;
-  if (!n) return alert('Dikhe hue groups me se koi Recipients me nahi hai');
-  if (!confirm(n + ' group(s) broadcast se hatane hain? (sirf ye dikhe hue groups, baaki recipients waise hi rahenge)')) return;
+function bcGDelAll() {
+  bcGShown().forEach(function(i) {
+    var jid = bcGJid(allGroups[i]);
+    if (recips.find(function(r) { return r.j === jid; })) bcGDel[jid] = 1;
+  });
+  bcGRender();
+}
+function bcGDelRun() {
+  var jids = Object.keys(bcGDel).filter(function(j) { return recips.find(function(r) { return r.j === j; }); });
+  if (!jids.length) return alert('Pehle hatane ke liye groups chuno (✓ wale chips par click karo)');
+  if (!confirm(jids.length + ' group(s) broadcast se hatane hain? Baaki recipients waise hi rahenge.')) return;
   recips = recips.filter(function(r) { return jids.indexOf(r.j) < 0; });
+  bcGDel = {};
   renderR();
   if (typeof renderGroups === 'function') renderGroups();
   bcGRender();
